@@ -292,7 +292,19 @@ From original documentation:
     }
     ```
     * `setChunked(mode,size?)`: Update information. `size` if provided must have same length as dimensions;
-
+    * `getDeflateInfo()`: Resolve to current shuffle/deflate info
+    ```json
+    {
+        "shuffle":boolean,
+        "deflate":boolean,
+        "level":0-9
+    }
+    ```
+    * `setDeflateInfo(shuffle,deflate,deflateLevel)`: set shuffle/deflation value
+    * `getEndiannes()`: Resolve to one of three value `little`,`big`,`native`
+    * `setEndianees(value)`: Set endiannes
+    * `getChecksumMode()`: Resolve to `fletcher` or `none`
+    * `setChecksumMode(mode)`: Set checksum mode
 
     * `getAttributes([asDefined])` : Resolve to associative array of attributes of group
         * Parameters
