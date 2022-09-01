@@ -1,0 +1,32 @@
+{
+  "name": "netcdf4-async",
+  "version": "0.1.0-0",
+  "description": "Async access to  NetCDF4 files",
+  "main": "./build/Release/netcdf4.node",
+  "scripts": {
+    "install": "node-gyp rebuild",
+    "build": "node-gyp build",
+    "clean": "rm -rf build node_modules",
+    "pretest": "node-gyp build",
+    "test": "mocha"
+  },
+  "contributors": [
+    "Vasyl Moskalov <mvtm.dn@gmail.com>",
+    "Kostiantyn Zemskyy <zyama.zemskyy@gmail.com>"
+  ],
+  "repository": "Hydroinformatics-Institute-Pte/netcdf4-async",
+  "engines": {
+    "node": ">=8"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "node-addon-api": "^3.0.0",
+    "node-gyp": "^9.1.0"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "chai-almost": "^1.0.1",
+    "mocha": "^7.1.2",
+    "unique-filename": "^2.0.1"
+  }
+}
