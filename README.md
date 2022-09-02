@@ -108,7 +108,7 @@ Example:
 
 ### Methods
 
-* `open(path,mode[,type])`: Return a promise resolved to `File` if file successfully opened, rejected otherwise
+* `open(path,mode[,format])`: Return a promise resolved to `File` if file successfully opened, rejected otherwise
     * Parameters
         * `path`: path to file
         * `mode`: file open mode
@@ -120,7 +120,7 @@ Example:
         | c | create if file not exsits, fail otherwise |
         | c! | create new or overwrite existing |
 
-        * `type`: File type. Means `classic` or `netcdf4` if omitted 
+        * `format`: File type. Means `classic` or `netcdf4` if omitted 
     * Examples
         * Promises
         ```javascript
@@ -146,7 +146,7 @@ Represent netcdf file instance
 
 * Properties
     * `name`: file path
-    * `type`: file type
+    * `format`: file format
     * `open`: Set to `true`, if file open
     * `root`: Instance main `Group` object. Definied only when file opened
 * Methods

@@ -2,7 +2,7 @@
   "name": "netcdf4-async",
   "version": "0.1.0-0",
   "description": "Async access to  NetCDF4 files",
-  "main": "./build/Release/netcdf4.node",
+  "main": "./build/Release/netcdf4-async.node",
   "scripts": {
     "install": "node-gyp rebuild",
     "build": "node-gyp build",
@@ -26,6 +26,7 @@
   "devDependencies": {
     "chai": "^4.2.0",
     "chai-almost": "^1.0.1",
+    "chai-as-promised": "^7.1.1",
     "mocha": "^7.1.2",
     "unique-filename": "^2.0.1"
   }
