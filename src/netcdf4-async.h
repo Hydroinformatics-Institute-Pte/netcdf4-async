@@ -11,7 +11,7 @@
 	do {                                                                                           \
 		int retval = FN;                                                                           \
 		if (retval != NC_NOERR) {                                                                  \
-			throw std::runtime_error("NetCDF4: " + nc_strerror(retval);                            \
+			throw std::runtime_error("NetCDF4: " + nc_strerror(retval));                           \
 		}                                                                                          \
 	} while (false);
 
