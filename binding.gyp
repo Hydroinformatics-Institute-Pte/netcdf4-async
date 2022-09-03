@@ -17,13 +17,12 @@
                 '-std=c++14'
             ],
             "sources": [
-                "src/NetCDFFile.cpp",    
-                "src/netcdf4js.cpp",
-                "src/netcdf4jstypes.cpp"
+                "src/File.cpp",
+                "src/netcdf4-async.cpp"
             ],
-            "target_name": "netcdf4",
+            "target_name": "netcdf4-async",
             "include_dirs": ["<!@(node -p \"require('node-addon-api').include\")"],
-            "target_name": "netcdf4",
+            "target_name": "netcdf4-async",
             'defines': ['NAPI_CPP_EXCEPTIONS'],
             "conditions": [
                 ['OS=="mac"', {

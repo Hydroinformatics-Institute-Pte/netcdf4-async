@@ -1,21 +1,28 @@
 #include <iostream>
 #include <netcdf.h>
 #include <string>
-#include "netcdf4js.h"
-#include "netcdf4jstypes.h"
-#include "NetCDFFile.h"
+#include "netcdf4-async.h"
 
-namespace netcdf4js {
+namespace netcdf4async {
 
 Napi::FunctionReference File::constructor;
 
 File::~File() {
 	if (!closed) {
-		NC_CALL_ENV(this->Env(), nc_close(id));
+		nc_close(id);
 	}
 }
 
-Napi::Object File::Init(Napi::Env env, Napi::Object exports) {
+Napi::Object File::Build(Napi::Env env,int ncid,const std::string name,const std::string mode,int type) {
+	return constructor.New({
+		Napi::Number::New(env,ncid),
+		Napi::String::New(env,name.c_str()),
+		Napi::String::New(env,mode.c_str()),
+		Napi::Number::New(env,type)
+	});
+}
+
+void File::Init(Napi::Env env) {
 	Napi::HandleScope scope(env);
 
 	Napi::Function func =
@@ -24,7 +31,6 @@ Napi::Object File::Init(Napi::Env env, Napi::Object exports) {
 				InstanceMethod("sync", &File::Sync), 
 				InstanceMethod("close", &File::Close),
 				InstanceMethod("dataMode", &File::DataMode),
-				InstanceAccessor<&File::GetId>("id"),
 				InstanceAccessor<&File::GetName>("name"),
 				InstanceAccessor<&File::IsClosed>("closed"),
 				InstanceAccessor<&File::GetFormat>("format"),
@@ -35,46 +41,50 @@ Napi::Object File::Init(Napi::Env env, Napi::Object exports) {
 	constructor = Napi::Persistent(func);
 	constructor.SuppressDestruct();
 
-	exports.Set("File", func);
-	return exports;
+//	exports.Set("File", func);
+//	return exports;
 }
 
-File::File(const Napi::CallbackInfo &info, NetCDFFile netcdf_file ) : Napi::ObjectWrap<NetCDFFile>(info), file(netcdf_file) {
-	// auto group = Group::Build(info.Env(), id);
-	// this->Value().Set("root", group);
-	// format=NC_FORMATS(open_format);
-	// closed=false;
+File::File(const Napi::CallbackInfo &info) : Napi::ObjectWrap<File>(info) {
+
+	if (info.Length() < 4) {
+		Napi::TypeError::New(info.Env(), "Wrong number of arguments").ThrowAsJavaScriptException();
+		return;
+	}
+
+	id = info[0].As<Napi::Number>().Int32Value();
+	
+	name = info[1].As<Napi::String>().Utf8Value();
+
+	mode = info[2].As<Napi::String>().Utf8Value();
+
+	format=NC_FORMATS(info[3].As<Napi::Number>().Int32Value());
+
+//	Napi::Object group = info[3].As<Napi::Object>();
+//	this->Value().Set("root", group);
+	closed=false;
 }
 
 Napi::Value File::Sync(const Napi::CallbackInfo &info) {
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
 	if (!this->closed) {
-		Napi::Env env = info.Env();
-
-		int retval = nc_sync(this->id);
-		if (retval != NC_NOERR) {
-			Napi::Error::New(env, nc_strerror(retval)).ThrowAsJavaScriptException();
-		}
+		deferred.Reject(Napi::String::New(info.Env(), "Not implemented yet"));
 	}
-
-	return info.Env().Undefined();
+	else {
+		deferred.Reject(Napi::String::New(info.Env(), "File already closed"));
+	}
+	return deferred.Promise();
 }
 
 Napi::Value File::Close(const Napi::CallbackInfo &info) {
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
 	if (!this->closed) {
-		this->closed = true;
-		int retval = nc_close(this->id);
-		if (retval != NC_NOERR && retval != NC_EBADID) {
-			Napi::Error::New(info.Env(), nc_strerror(retval)).ThrowAsJavaScriptException();
-		}
-		if (this->Value().Has("root")) {
-			this->Value().Delete("root");
-		}		
+		deferred.Reject(Napi::String::New(info.Env(), "Not implemented yet"));
 	}
-	return info.Env().Undefined();
-}
-
-Napi::Value File::GetId(const Napi::CallbackInfo &info) {
-	return Napi::Number::New(info.Env(), id);
+	else {
+		deferred.Resolve(Napi::String::New(info.Env(),"File already closed"));
+	}
+	return deferred.Promise();
 }
 
 Napi::Value File::GetName(const Napi::CallbackInfo &info) {
@@ -90,12 +100,14 @@ Napi::Value File::GetFormat(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value File::DataMode(const Napi::CallbackInfo &info) {
-	int retval = nc_enddef(this->id);
-	if (retval != NC_NOERR) {
-		Napi::Error::New(info.Env(), nc_strerror(retval)).ThrowAsJavaScriptException();
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+	if (!this->closed) {
+		deferred.Reject(Napi::String::New(info.Env(), "Not implemented yet"));
 	}
-	return info.Env().Undefined();
-
+	else {
+		deferred.Reject(Napi::String::New(info.Env(), "File closed"));
+	}
+	return deferred.Promise();
 }
 
 Napi::Value File::Inspect(const Napi::CallbackInfo &info) {
@@ -109,4 +121,4 @@ Napi::Value File::Inspect(const Napi::CallbackInfo &info) {
 	);
 
 }
-} // namespace netcdf4js
+} // namespace netcdf4async 
