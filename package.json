@@ -5,8 +5,10 @@
   "main": "./build/Release/netcdf4-async.node",
   "scripts": {
     "install": "node-gyp rebuild",
+    "rebuild": "node-gyp rebuild",
     "build": "node-gyp build",
-    "clean": "rm -rf build node_modules",
+    "clean": "rm -rf build",
+    "clean-all": "rm -rf build node_modules",
     "pretest": "node-gyp build",
     "test": "mocha"
   },
