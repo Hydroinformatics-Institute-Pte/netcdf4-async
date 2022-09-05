@@ -11,7 +11,7 @@
 	do {                                                                                           \
 		int retval = FN;                                                                           \
 		if (retval != NC_NOERR) {                                                                  \
-			throw std::runtime_error("NetCDF4: " + nc_strerror(retval);                            \
+			throw std::runtime_error("NetCDF4: " + std::string(nc_strerror(retval)));              \
 		}                                                                                          \
 	} while (false);
 
@@ -89,9 +89,6 @@ inline int get_type(const std::string &type_str) {
 		return NC2_ERR;
 	}
 }
-
-
-
 
 class File : public Napi::ObjectWrap<File> {
   public:

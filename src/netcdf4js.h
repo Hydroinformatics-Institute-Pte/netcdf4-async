@@ -6,32 +6,32 @@
 #include <string>
 #include <memory>
 
-#define NC_CALL(FN)                                                                                \
-	do {                                                                                           \
-		int retval = FN;                                                                           \
-		if (retval != NC_NOERR) {                                                                  \
-			Napi::Error::New(info.Env(), nc_strerror(retval)).ThrowAsJavaScriptException();        \
-			return info.Env().Undefined();                                                         \
-		}                                                                                          \
-	} while (false);
+// #define NC_CALL(FN)                                                                                \
+// 	do {                                                                                           \
+// 		int retval = FN;                                                                           \
+// 		if (retval != NC_NOERR) {                                                                  \
+// 			Napi::Error::New(info.Env(), nc_strerror(retval)).ThrowAsJavaScriptException();        \
+// 			return info.Env().Undefined();                                                         \
+// 		}                                                                                          \
+// 	} while (false);
 
-#define NC_CALL_VOID(FN)                                                                           \
-	do {                                                                                           \
-		int retval = FN;                                                                           \
-		if (retval != NC_NOERR) {                                                                  \
-			Napi::Error::New(info.Env(), nc_strerror(retval)).ThrowAsJavaScriptException();        \
-			return;                                                                                \
-		}                                                                                          \
-	} while (false);
+// #define NC_CALL_VOID(FN)                                                                           \
+// 	do {                                                                                           \
+// 		int retval = FN;                                                                           \
+// 		if (retval != NC_NOERR) {                                                                  \
+// 			Napi::Error::New(info.Env(), nc_strerror(retval)).ThrowAsJavaScriptException();        \
+// 			return;                                                                                \
+// 		}                                                                                          \
+// 	} while (false);
 
-#define NC_CALL_ENV(ENV, FN)                                                                       \
-	do {                                                                                           \
-		int retval = FN;                                                                           \
-		if (retval != NC_NOERR) {                                                                  \
-			Napi::Error::New(ENV, nc_strerror(retval)).ThrowAsJavaScriptException();               \
-			return;                                                                                \
-		}                                                                                          \
-	} while (false);
+// #define NC_CALL_ENV(ENV, FN)                                                                       \
+// 	do {                                                                                           \
+// 		int retval = FN;                                                                           \
+// 		if (retval != NC_NOERR) {                                                                  \
+// 			Napi::Error::New(ENV, nc_strerror(retval)).ThrowAsJavaScriptException();               \
+// 			return;                                                                                \
+// 		}                                                                                          \
+// 	} while (false);
 
 namespace netcdf4js {
 	

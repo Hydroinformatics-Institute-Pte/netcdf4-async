@@ -53,7 +53,7 @@ File::File(const Napi::CallbackInfo &info) : Napi::ObjectWrap<File>(info) {
 	}
 
 	id = info[0].As<Napi::Number>().Int32Value();
-	
+
 	name = info[1].As<Napi::String>().Utf8Value();
 
 	mode = info[2].As<Napi::String>().Utf8Value();

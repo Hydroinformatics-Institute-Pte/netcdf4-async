@@ -1,6 +1,7 @@
 #include <napi.h>
 #include <netcdf_meta.h>
 #include "netcdf4-async.h"
+#include "worker.h"
 
 
 namespace netcdf4async {
@@ -39,21 +40,66 @@ namespace netcdf4async {
 using namespace netcdf4async;
 
 Napi::Value open(const Napi::CallbackInfo& info) {
+	printf("Start openFile\n");
 	Napi::Env env = info.Env();
 	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+
 	if (info.Length() < 2) {
 		deferred.Reject(Napi::String::New(info.Env(), "Wrong number of arguments"));
 		return deferred.Promise();
 	}
+    std::string name = info[0].As<Napi::String>().Utf8Value();
 
-	deferred.Resolve(
-		File::Build(env,
-			-1,
-			info[0].As<Napi::String>().Utf8Value(),
-			info[1].As<Napi::String>().Utf8Value(),
-			2
-			)
-	);
+	std::string mode_arg = info[1].As<Napi::String>().Utf8Value();
+
+	int open_format = NC_NETCDF4;
+	if (info.Length() > 2) {
+		std::string format_arg = info[2].As<Napi::String>().Utf8Value();
+
+		if (format_arg == "classic") {
+			open_format = 0;
+		} else if (format_arg == "classic64") {
+			open_format = NC_64BIT_OFFSET;
+		} else if (format_arg == "netcdf4") {
+			open_format = NC_NETCDF4;
+		} else if (format_arg == "netcdf4classic") {
+			open_format = NC_NETCDF4 | NC_CLASSIC_MODEL;
+		} else {
+			deferred.Reject(Napi::String::New(info.Env(), "Unknown file format"));
+			return deferred.Promise();
+		}
+	}
+	printf("Create Async Worker\n");
+
+    NetCDFPromiseWorker<int> * onenFileWorker = new NetCDFPromiseWorker<int>(info.Env(), &deferred, 
+        [name, mode_arg, open_format](){
+            int id;
+            if (mode_arg == "r") {
+		        NC_CALL(nc_open(name.c_str(), NC_NOWRITE, &id));
+	        } else if (mode_arg == "w") {
+		        NC_CALL(nc_open(name.c_str(), NC_WRITE, &id));
+	        } else if (mode_arg == "c") {
+		        NC_CALL(nc_create(name.c_str(), open_format | NC_NOCLOBBER, &id));
+	        } else if (mode_arg == "c!") {
+		        NC_CALL(nc_create(name.c_str(), open_format | NC_CLOBBER, &id));
+	        } else {
+		        throw std::runtime_error("Unknown file mode");
+	        }
+	        NC_CALL(nc_inq_format_extended(id, const_cast<int*>(&open_format),NULL));
+            return id;
+        },
+        [env, name, mode_arg, open_format](int id){
+            return File::Build(env,
+				id,
+				name,
+				mode_arg,
+				open_format
+			);
+
+        }); 
+
+	onenFileWorker->Queue();
+
 	return deferred.Promise();
 }
 
