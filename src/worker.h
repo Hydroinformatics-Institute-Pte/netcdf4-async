@@ -4,27 +4,18 @@
 #include <napi.h>
 #include <string>
 
-
-Napi::Value EmptyCallback(const Napi::CallbackInfo& info)
-{
-    Napi::Env env = info.Env();
-    Napi::HandleScope scope(env);
-    
-    return env.Undefined();
-}
-
 template <class NetCDFType> class NetCDFPromiseWorker : public Napi::AsyncWorker {
 
   typedef std::function<NetCDFType()> NetCDFMainFunc;
   typedef std::function<Napi::Value(const NetCDFType)> NetCDFRValFunc;
   private:
-    Napi::Promise::Deferred * deferred;
+    Napi::Promise::Deferred& deferred;
     Napi::Value result;
     const NetCDFMainFunc doit;
     const NetCDFRValFunc rval;
 
   public:
-    explicit NetCDFPromiseWorker(Napi::Env env, Napi::Promise::Deferred* deferred, const NetCDFMainFunc doit, const NetCDFRValFunc rval);
+    explicit NetCDFPromiseWorker(Napi::Env env, Napi::Promise::Deferred &deferred, const NetCDFMainFunc doit, const NetCDFRValFunc rval);
 
     ~NetCDFPromiseWorker();
   protected:
@@ -35,7 +26,7 @@ template <class NetCDFType> class NetCDFPromiseWorker : public Napi::AsyncWorker
 };
 
 template <class NetCDFType> NetCDFPromiseWorker<NetCDFType> ::NetCDFPromiseWorker(Napi::Env env,
-     Napi::Promise::Deferred* promise,
+     Napi::Promise::Deferred &promise,
      const NetCDFMainFunc mainFunc,
      const NetCDFRValFunc rvalFunc):
   Napi::AsyncWorker(env),
@@ -48,19 +39,15 @@ template <class NetCDFType> NetCDFPromiseWorker<NetCDFType> ::NetCDFPromiseWorke
   }
 
 
-template <class NetCDFType> void NetCDFPromiseWorker<NetCDFType> ::OnError(const Napi::Error& e) {
+template <class NetCDFType> void NetCDFPromiseWorker<NetCDFType> ::OnError(const Napi::Error& error) {
   Napi::HandleScope scope(Env());
-  deferred->Reject(Napi::String::New(Env(), e.Message()));
-  Callback().Call({});
+  deferred.Reject(error.Value());
 }
 
 
 template <class NetCDFType> void NetCDFPromiseWorker<NetCDFType> ::OnOK() {
   Napi::HandleScope scope(Env());
-  deferred->Resolve(this->result);
-        
-        // Call empty function
-  Callback().Call({});
+  deferred.Resolve(this->result);
 }
 
 #endif

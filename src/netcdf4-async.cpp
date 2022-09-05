@@ -71,7 +71,7 @@ Napi::Value open(const Napi::CallbackInfo& info) {
 	}
 	printf("Create Async Worker\n");
 
-    NetCDFPromiseWorker<int> * onenFileWorker = new NetCDFPromiseWorker<int>(info.Env(), &deferred, 
+    NetCDFPromiseWorker<int> * onenFileWorker = new NetCDFPromiseWorker<int>(info.Env(), deferred, 
         [name, mode_arg, open_format](){
             int id;
             if (mode_arg == "r") {
