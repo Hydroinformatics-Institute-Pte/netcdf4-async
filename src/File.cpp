@@ -16,6 +16,8 @@ struct NCFile_result
 	int id;
 	/// @brief File format
 	int format;
+	/// @brief Dimension group name
+	std::string group_name;
 };
 
 
@@ -121,6 +123,13 @@ File::File(
 	closed=true;
 }
 
+
+void File::createDefaultGroup(Napi::Env env,std::string name) {
+	printf("Default group=%s\n",name.c_str());
+	this->Value().Set("root",Napi::String::New(env,name));
+}
+
+
 /**
  * @brief Async open netCDF file
  * Either create new File object __after__ open file, or rejects 
@@ -188,11 +197,20 @@ Napi::Value File::Open(const Napi::CallbackInfo& info) {
 				NC_CALL(nc_open(name.c_str(), mode, &result.id));
 			}
 			NC_CALL(nc_inq_format_extended(result.id,&result.format,NULL));
+			char varName[NC_MAX_NAME + 1];
+			NC_CALL(nc_inq_grpname(result.id, varName));
+			result.group_name=std::string(varName);
 			return result;
 			// this->format=i;
 		},
 		[name,mode_arg] (Napi::Env env,NCFile_result result)  {
-			return File::Build(env,result.id,name,mode_arg,result.format);
+			auto file=File::Build(env,result.id,name,mode_arg,result.format);
+			void* native;
+			napi_unwrap(env,file,&native);
+			// std::unique_ptr<File> file=std::unique_ptr<File>(static_cast<File *>(native));
+			File* file_native=static_cast<File *>(native);
+			file_native->createDefaultGroup(env,result.group_name);
+			return file;
 		}
 		
 	))->Queue();
