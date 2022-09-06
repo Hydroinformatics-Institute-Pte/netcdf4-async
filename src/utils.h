@@ -31,8 +31,13 @@ namespace netcdf4async {
 	extern const char *type_names[];
 
 /**
+ * @brief printf like formatting for C++ with std::string
  * printf like formatting for C++ with std::string
  * Original source: https://stackoverflow.com/a/26221725/11722
+ * @tparam Args 
+ * @param format 
+ * @param args 
+ * @return std::string 
  */
 template<typename ... Args>
 std::string string_format( const std::string& format, Args ... args )
@@ -45,7 +50,12 @@ std::string string_format( const std::string& format, Args ... args )
     return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
 }
 
-	
+/**
+ * @brief Get the type object
+ * 
+ * @param type_str 
+ * @return int 
+ */
 inline int get_type(const std::string &type_str) {
 	if (type_str == "byte" || type_str == "i1" || type_str == "b" || type_str == "B") {
 		return NC_BYTE;

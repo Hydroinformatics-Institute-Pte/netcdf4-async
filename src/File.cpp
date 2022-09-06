@@ -6,21 +6,42 @@
 
 namespace netcdf4async {
 
-struct File_result
+/**
+ * @brief File operation results
+ * 
+ */
+struct NCFile_result
 {
+	/// @brief File id
 	int id;
+	/// @brief File format
 	int format;
 };
 
 
 Napi::FunctionReference File::constructor;
 
+/**
+ * @brief Destroy the File:: File object
+ * Destroy file and close netcdf file (if not closed yet)
+ */
 File::~File() {
 	if (!closed) {
 		nc_close(id);
 	}
 }
 
+/**
+ * @brief Build Node file object
+ * Create object which handles NetCDF file
+ * NB! File must be opened before create
+ * @param env NodeJS environment
+ * @param ncid NetCDF file id
+ * @param name file full path
+ * @param mode file mode
+ * @param type file type
+ * @return Napi::Object 
+ */
 Napi::Object File::Build(Napi::Env env,int ncid,const std::string name,const std::string mode,int type) {
 	return constructor.New({
 		Napi::Number::New(env,ncid),
@@ -30,6 +51,11 @@ Napi::Object File::Build(Napi::Env env,int ncid,const std::string name,const std
 	});
 }
 
+/**
+ * @brief Define NodeJS object description 
+ * 
+ * @param env NodeJS env
+ */
 void File::Init(Napi::Env env) {
 	Napi::HandleScope scope(env);
 
@@ -53,6 +79,11 @@ void File::Init(Napi::Env env) {
 //	return exports;
 }
 
+/**
+ * @brief Construct a new File:: File object
+ * Construct NodeJS wrapper for netcdf file.
+ * @param info NodeJS parameters
+ */
 File::File(const Napi::CallbackInfo &info) : Napi::ObjectWrap<File>(info) {
 
 	if (info.Length() < 4) {
@@ -74,6 +105,15 @@ File::File(const Napi::CallbackInfo &info) : Napi::ObjectWrap<File>(info) {
 //	closed=true;
 }
 
+/**
+ * @brief Construct a new File:: File object
+ * Construct NodeJS wrapper for netcdf file.
+ * @param info NodeJS params
+ * @param id file id
+ * @param name file path
+ * @param mode file mode
+ * @param format file format
+ */
 File::File(
 		const Napi::CallbackInfo &info,
 		int id,std::string name,std::string mode,int format
@@ -81,86 +121,12 @@ File::File(
 	closed=true;
 }
 
-
-Napi::Value File::Sync(const Napi::CallbackInfo &info) {
-	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-	if (!this->closed) {
-		deferred.Reject(Napi::String::New(info.Env(), "Not implemented yet"));
-	}
-	else {
-		deferred.Reject(Napi::String::New(info.Env(), "File already closed"));
-	}
-	return deferred.Promise();
-}
-
-Napi::Value File::Close(const Napi::CallbackInfo &info) {
-	Napi::Env env = info.Env();
-
-	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(env);
-	if (!this->closed) {
-		this->closed=true;
-		int id=this->id;
-		(new NCAsyncWorker<File_result>(
-			env,
-			deferred,
-			[id] (const NCAsyncWorker<File_result>* worker) {
-				static File_result result;
-				result.id=id;
-		        NC_VOID_CALL(nc_close(id))
-				return result;
-				// this->format=i;
-			},
-			[] (Napi::Env env,File_result result)  {
-				return Napi::Number::New(env,result.id);
-			//	deferred.Resolve();
-			}
-			
-		))->Queue();
-
-		
-	}
-	else {
-		deferred.Resolve(Napi::String::New(info.Env(),"File already closed"));
-	}
-	return deferred.Promise();
-}
-
-Napi::Value File::GetName(const Napi::CallbackInfo &info) {
-	return Napi::String::New(info.Env(), name);
-}
-
-Napi::Value File::IsClosed(const Napi::CallbackInfo &info) {
-	return Napi::Boolean::New(info.Env(), closed);
-}
-
-Napi::Value File::GetFormat(const Napi::CallbackInfo &info) {
-	return Napi::String::New(info.Env(), NC_FORMATS(format));
-}
-
-Napi::Value File::DataMode(const Napi::CallbackInfo &info) {
-	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-	if (!this->closed) {
-		deferred.Reject(Napi::String::New(info.Env(), "Not implemented yet"));
-	}
-	else {
-		deferred.Reject(Napi::String::New(info.Env(), "File closed"));
-	}
-	return deferred.Promise();
-}
-
-Napi::Value File::Inspect(const Napi::CallbackInfo &info) {
-	return Napi::String::New(info.Env(), 
-		string_format(
-			"[%s%s file %s]",
-			this->closed?"Closed ":"",
-			NC_FORMATS(format),
-			this->name.c_str()
-		)
-	);
-
-}
-
-
+/**
+ * @brief Async open netCDF file
+ * Either create new File object __after__ open file, or rejects 
+ * @param info NodeJS params
+ * @return Napi::Value Deferred promise object
+ */
 Napi::Value File::Open(const Napi::CallbackInfo& info) {
 
 	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
@@ -210,28 +176,181 @@ Napi::Value File::Open(const Napi::CallbackInfo& info) {
 	}
 
 
-		(new NCAsyncWorker<File_result>(
+	(new NCAsyncWorker<NCFile_result>(
+		env,
+		deferred,
+		[open_format,id,name,mode,create] (const NCAsyncWorker<NCFile_result>* worker) {
+			static NCFile_result result;
+			if (create) {
+				NC_CALL(nc_create(name.c_str(), mode, &result.id));
+			}
+			else {
+				NC_CALL(nc_open(name.c_str(), mode, &result.id));
+			}
+			NC_CALL(nc_inq_format_extended(result.id,&result.format,NULL));
+			return result;
+			// this->format=i;
+		},
+		[name,mode_arg] (Napi::Env env,NCFile_result result)  {
+			return File::Build(env,result.id,name,mode_arg,result.format);
+		}
+		
+	))->Queue();
+
+	return deferred.Promise();
+}
+
+/**
+ * @brief Async switch file from definition mode
+ * 
+ * @param info NodeJS params
+ * @return Napi::Value Deferred promise object
+ */
+Napi::Value File::DataMode(const Napi::CallbackInfo &info) {
+	Napi::Env env = info.Env();
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+	if (!this->closed) {
+		int id=this->id;
+		(new NCAsyncWorker<NCFile_result>(
 			env,
 			deferred,
-			[open_format,id,name,mode,create] (const NCAsyncWorker<File_result>* worker) {
-				static File_result result;
-				if (create) {
-					NC_CALL(nc_create(name.c_str(), mode, &result.id));
-				}
-				else {
-					NC_CALL(nc_open(name.c_str(), mode, &result.id));
-				}
-				NC_CALL(nc_inq_format_extended(result.id,&result.format,NULL));
+			[id] (const NCAsyncWorker<NCFile_result>* worker) {
+				static NCFile_result result;
+				result.id=id;
+		        NC_CALL(nc_enddef(id))
 				return result;
 				// this->format=i;
 			},
-			[name,mode_arg] (Napi::Env env,File_result result)  {
-				return File::Build(env,result.id,name,mode_arg,result.format);
+			[] (Napi::Env env,NCFile_result result)  {
+				return Napi::Number::New(env,result.id);
+			//	deferred.Resolve();
+			}
+			
+		))->Queue();
+	}
+	else {
+		deferred.Reject(Napi::String::New(info.Env(), "File already closed"));
+	}
+	return deferred.Promise();
+}
+
+/**
+ * @brief Perform netCDF file sync. 
+ * Synchronize data from memory to disk and vice verse.
+ * @param info 
+ * @return Napi::Value Deferred promise object
+ */
+Napi::Value File::Sync(const Napi::CallbackInfo &info) {
+	Napi::Env env = info.Env();
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+	if (!this->closed) {
+		int id=this->id;
+		(new NCAsyncWorker<NCFile_result>(
+			env,
+			deferred,
+			[id] (const NCAsyncWorker<NCFile_result>* worker) {
+				static NCFile_result result;
+				result.id=id;
+		        NC_CALL(nc_sync(id))
+				return result;
+				// this->format=i;
+			},
+			[] (Napi::Env env,NCFile_result result)  {
+				return Napi::Number::New(env,result.id);
+			//	deferred.Resolve();
+			}
+			
+		))->Queue();
+	}
+	else {
+		deferred.Reject(Napi::String::New(info.Env(), "File already closed"));
+	}
+	return deferred.Promise();
+}
+
+/**
+ * @brief Closes netCDF file
+ * Closes netcdf file and removes root variable group
+ * @param info 
+ * @return Napi::Value Deferred promise object
+ */
+Napi::Value File::Close(const Napi::CallbackInfo &info) {
+	Napi::Env env = info.Env();
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(env);
+	if (!this->closed) {
+		this->closed=true;
+		int id=this->id;
+		(new NCAsyncWorker<NCFile_result>(
+			env,
+			deferred,
+			[id] (const NCAsyncWorker<NCFile_result>* worker) {
+				static NCFile_result result;
+				result.id=id;
+		        NC_VOID_CALL(nc_close(id))
+				return result;
+				// this->format=i;
+			},
+			[] (Napi::Env env,NCFile_result result)  {
+				return Napi::Number::New(env,result.id);
+			//	deferred.Resolve();
 			}
 			
 		))->Queue();
 
+		
+	}
+	else {
+		deferred.Resolve(Napi::String::New(info.Env(),"File already closed"));
+	}
 	return deferred.Promise();
+}
+
+/**
+ * @brief Return full file path
+ * 
+ * @param info 
+ * @return Napi::Value NodeJS string representation of file path
+ */
+Napi::Value File::GetName(const Napi::CallbackInfo &info) {
+	return Napi::String::New(info.Env(), name);
+}
+
+/**
+ * @brief is file closed?
+ * 
+ * @param info 
+ * @return Napi::Value NodeJS boolean representation, =true if file closed
+ */
+Napi::Value File::IsClosed(const Napi::CallbackInfo &info) {
+	return Napi::Boolean::New(info.Env(), closed);
+}
+
+/**
+ * @brief Return file format
+ * 
+ * @param info 
+ * @return Napi::Value 
+ */
+Napi::Value File::GetFormat(const Napi::CallbackInfo &info) {
+	return Napi::String::New(info.Env(), NC_FORMATS(format));
+}
+
+/**
+ * @brief Return string representation for file object
+ * Basicly use in toString() method of NodeJS object
+ * @param info 
+ * @return Napi::Value 
+ */
+Napi::Value File::Inspect(const Napi::CallbackInfo &info) {
+	return Napi::String::New(info.Env(), 
+		string_format(
+			"[%s%s file %s]",
+			this->closed?"Closed ":"",
+			NC_FORMATS(format),
+			this->name.c_str()
+		)
+	);
+
 }
 
 

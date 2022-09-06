@@ -11,44 +11,87 @@
 
 namespace netcdf4async {
 
+  /// @brief List of variable/attribute types
   extern const char *format_names[];
-	extern const char *type_names[];
+  /// @brief List of file format names
+  extern const char *type_names[];
 
-
-
+/// @brief NetCDF file implementation
 class File : public Napi::ObjectWrap<File> {
   public:
+	/// @brief Initialize class as NodeJS object
+	/// @param env NodeJS env
 	static void Init(Napi::Env env);
-	static Napi::Object Build(Napi::Env env,int ncid,std::string name,std::string mode,int type);
+	/// @brief Async open of NetCDF file
+	/// @param info 
+	/// @return Deferred promise
 	static Napi::Value Open (const Napi::CallbackInfo& info);
-	
+
+    /// @brief Construct a new File object
+    /// Construct NodeJS wrapper for netcdf file.
+    /// @param info NodeJS params
+    /// @param id file id
+    /// @param name file path
+    /// @param mode file mode
+    /// @param format file format
 	explicit File(const Napi::CallbackInfo &info,int id,std::string name,std::string mode,int format);
+	/// @brief Async open netCDF file
+	/// @param info NodeJS parameters
 	explicit File(const Napi::CallbackInfo &info);
 	~File();
 
   private:
+
 	static Napi::FunctionReference constructor;
+	static Napi::Object Build(Napi::Env env,int ncid,std::string name,std::string mode,int type);
+
+	/// @brief NetCDF file id
+	int id;
+	/// @brief file path
+	std::string name;
+	/// @brief file mode
+	std::string mode;
+	/// @brief file format
+	int format;
+	/// @brief Root variable groop
+	Napi::Object group;
+	/// @brief Is file close
+	bool closed;
 
 	
 	// Napi::Value New(const Napi::CallbackInfo &info);
-	Napi::Value Close(const Napi::CallbackInfo &info);
-	Napi::Value Sync(const Napi::CallbackInfo &info);
-	Napi::Value DataMode(const Napi::CallbackInfo &info);
-	Napi::Value GetName(const Napi::CallbackInfo &info);
-	Napi::Value IsClosed(const Napi::CallbackInfo &info);
-	Napi::Value GetFormat(const Napi::CallbackInfo &info);
-	Napi::Value Inspect(const Napi::CallbackInfo &info);
-	// Async calls
 
-//	void close();
+	/// @brief Perform asyc close
+	/// @param info 
+	/// @return Deferred promise
+	Napi::Value Close(const Napi::CallbackInfo &info);
+	/// @brief Perform async synchronization
+	/// @param info 
+	/// @return Deferred promise
+	Napi::Value Sync(const Napi::CallbackInfo &info);
+	/// @brief Switch NetCDF file from definition mode
+	/// @param info 
+	/// @return Deferred promise
+	Napi::Value DataMode(const Napi::CallbackInfo &info);
+	/// @brief Return file path
+	/// @param info 
+	/// @return NodeJS String
+	Napi::Value GetName(const Napi::CallbackInfo &info);
+	/// @brief Is file closed
+	/// @param info 
+	/// @return NodeJS boolean
+	Napi::Value IsClosed(const Napi::CallbackInfo &info);
+	/// @brief File format
+	/// @see *format_names
+	/// @param info 
+	/// @return NodeJS file format string
+	Napi::Value GetFormat(const Napi::CallbackInfo &info);
+	/// @brief Object.toString impl
+	/// @param info 
+	/// @return 
+	Napi::Value Inspect(const Napi::CallbackInfo &info);
 	
 
-	int id;
-	std::string name;
-	std::string mode;
-	int format;
-	Napi::Object group;
-	bool closed;
 };
 
 

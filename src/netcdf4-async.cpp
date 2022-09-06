@@ -3,11 +3,11 @@
 #include <netcdf_meta.h>
 #include <memory>
 #include "netcdf4-async.h"
-#include "worker.h"
+// #include "worker.h"
 
 
 namespace netcdf4async {
-
+    /// @brief List of variable/attribute types
     const char *type_names[] = {
         "unknown", // NC_NAT // unknown type
         "byte",	   // NC_BYTE
@@ -23,6 +23,7 @@ namespace netcdf4async {
         "uint64",	   // NC_UINT64
         "string"
     };
+    /// @brief List of file format names
     const char *format_names[] = {
         "unknown", // NC_FORMATX_UNDEFINED
         "netcdf3",	   // NC_FORMATX_NC3
@@ -37,9 +38,12 @@ namespace netcdf4async {
         "zarr"	   // NC_FORMATX_NCZARR
     };
 
-}
-using namespace netcdf4async;
-
+/**
+ * @brief Async open file implementation
+ * 
+ * @param info 
+ * @return Napi::Value Returns Promise object
+ */
 Napi::Value open(const Napi::CallbackInfo& info) {
 
 
@@ -53,6 +57,13 @@ Napi::Value open(const Napi::CallbackInfo& info) {
 
 }
 
+/**
+ * @brief Initialize class as NodeJS object
+ * 
+ * @param env nodejs environment
+ * @param exports Object contains module exports
+ * @return Napi::Object Object contains module exports
+ */
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
 	Napi::Object version=Napi::Object::New(env);
 	version.Set("major",NC_VERSION_MAJOR);
@@ -71,3 +82,4 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
 }
 
 NODE_API_MODULE(hello, Init)
+}
