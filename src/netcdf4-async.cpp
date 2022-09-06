@@ -74,7 +74,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
 
 	exports.Set(Napi::String::New(env, "open"), Napi::Function::New<open>(env));	
 	File::Init(env);
-//	Group::Init(env, exports);
+	Group::Init(env);
 //	Dimension::Init(env, exports);
 //	Attribute::Init(env, exports);
 //	Variable::Init(env, exports);

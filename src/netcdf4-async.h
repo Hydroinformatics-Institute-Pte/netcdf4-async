@@ -90,8 +90,37 @@ class File : public Napi::ObjectWrap<File> {
 	/// @param info 
 	/// @return 
 	Napi::Value Inspect(const Napi::CallbackInfo &info);
-	
+};
 
+
+class Group : public Napi::ObjectWrap<Group> {
+  public:
+	Group(const Napi::CallbackInfo &info);
+	Group(const Napi::CallbackInfo &info, int id, std::string name);
+	static void Init(Napi::Env env);
+	static Napi::Object Build(Napi::Env env, int id);
+	bool get_name(char *name) const;
+
+	int id;
+	std::string name;
+
+  private:
+	static Napi::FunctionReference constructor;
+
+	Napi::Value GetId(const Napi::CallbackInfo &info);
+	Napi::Value GetVariables(const Napi::CallbackInfo &info);
+	Napi::Value GetDimensions(const Napi::CallbackInfo &info);
+	Napi::Value GetUnlimited(const Napi::CallbackInfo &info);
+	Napi::Value GetAttributes(const Napi::CallbackInfo &info);
+	Napi::Value GetSubgroups(const Napi::CallbackInfo &info);
+	Napi::Value GetName(const Napi::CallbackInfo &info);
+	Napi::Value SetName(const Napi::CallbackInfo &info);
+	Napi::Value GetFullname(const Napi::CallbackInfo &info);
+	Napi::Value AddAttribute(const Napi::CallbackInfo &info);
+	Napi::Value AddDimension(const Napi::CallbackInfo &info);
+	Napi::Value AddSubgroup(const Napi::CallbackInfo &info);
+	Napi::Value AddVariable(const Napi::CallbackInfo &info);
+	Napi::Value Inspect(const Napi::CallbackInfo &info);
 };
 
 
