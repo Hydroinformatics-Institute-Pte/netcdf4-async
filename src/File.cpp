@@ -2,8 +2,16 @@
 #include <netcdf.h>
 #include <string>
 #include "netcdf4-async.h"
+#include "async.h"
 
 namespace netcdf4async {
+
+struct File_result
+{
+	int id;
+	int format;
+};
+
 
 Napi::FunctionReference File::constructor;
 
@@ -58,12 +66,21 @@ File::File(const Napi::CallbackInfo &info) : Napi::ObjectWrap<File>(info) {
 
 	mode = info[2].As<Napi::String>().Utf8Value();
 
-	format=NC_FORMATS(info[3].As<Napi::Number>().Int32Value());
+
+	format=info[3].As<Napi::Number>().Int32Value();
 
 //	Napi::Object group = info[3].As<Napi::Object>();
 //	this->Value().Set("root", group);
-	closed=false;
+//	closed=true;
 }
+
+File::File(
+		const Napi::CallbackInfo &info,
+		int id,std::string name,std::string mode,int format
+	) : Napi::ObjectWrap<File>(info),id(id),name(name),mode(mode),format(format) {
+	closed=true;
+}
+
 
 Napi::Value File::Sync(const Napi::CallbackInfo &info) {
 	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
@@ -77,9 +94,30 @@ Napi::Value File::Sync(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value File::Close(const Napi::CallbackInfo &info) {
-	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+	Napi::Env env = info.Env();
+
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(env);
 	if (!this->closed) {
-		deferred.Reject(Napi::String::New(info.Env(), "Not implemented yet"));
+		this->closed=true;
+		int id=this->id;
+		(new NCAsyncWorker<File_result>(
+			env,
+			deferred,
+			[id] (const NCAsyncWorker<File_result>* worker) {
+				static File_result result;
+				result.id=id;
+		        NC_VOID_CALL(nc_close(id))
+				return result;
+				// this->format=i;
+			},
+			[] (Napi::Env env,File_result result)  {
+				return Napi::Number::New(env,result.id);
+			//	deferred.Resolve();
+			}
+			
+		))->Queue();
+
+		
 	}
 	else {
 		deferred.Resolve(Napi::String::New(info.Env(),"File already closed"));
@@ -96,7 +134,7 @@ Napi::Value File::IsClosed(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value File::GetFormat(const Napi::CallbackInfo &info) {
-	return Napi::String::New(info.Env(), format);
+	return Napi::String::New(info.Env(), NC_FORMATS(format));
 }
 
 Napi::Value File::DataMode(const Napi::CallbackInfo &info) {
@@ -115,10 +153,87 @@ Napi::Value File::Inspect(const Napi::CallbackInfo &info) {
 		string_format(
 			"[%s%s file %s]",
 			this->closed?"Closed ":"",
-			this->format.c_str(),
+			NC_FORMATS(format),
 			this->name.c_str()
 		)
 	);
 
 }
+
+
+Napi::Value File::Open(const Napi::CallbackInfo& info) {
+
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+	if (info.Length() < 2) {
+		deferred.Reject(Napi::String::New(info.Env(), "Wrong number of arguments"));
+		return deferred.Promise();
+	}
+
+	std::string name = info[0].As<Napi::String>().Utf8Value();
+	std::string mode_arg = info[1].As<Napi::String>().Utf8Value();
+	int open_format = NC_NETCDF4;
+	int id=-1;
+	Napi::Env env = info.Env();
+
+	if (info.Length() > 2) {
+		std::string format_arg = info[2].As<Napi::String>().Utf8Value();
+
+		if (format_arg == "classic") {
+			open_format = 0;
+		} else if (format_arg == "classic64") {
+			open_format = NC_64BIT_OFFSET;
+		} else if (format_arg == "netcdf4") {
+			open_format = NC_NETCDF4;
+		} else if (format_arg == "netcdf4classic") {
+			open_format = NC_NETCDF4 | NC_CLASSIC_MODEL;
+		} else {
+            deferred.Reject(Napi::String::New(info.Env(), "NetCDF4: Unknown file format"));
+    		return deferred.Promise();
+		}
+	}
+
+	int mode=0;
+	bool create=false;
+	if (mode_arg == "r") {
+		mode=NC_NOWRITE;
+	} else if (mode_arg == "w") {
+		mode=NC_WRITE;
+	} else if (mode_arg == "c") {
+		mode=open_format | NC_NOCLOBBER;
+		create=true;
+	} else if (mode_arg == "c!") {
+		mode=open_format | NC_CLOBBER;
+		create=true;
+	} else {
+		deferred.Reject(Napi::String::New(info.Env(), "NetCDF4: Unknown file mode"));
+		return deferred.Promise();
+	}
+
+
+		(new NCAsyncWorker<File_result>(
+			env,
+			deferred,
+			[open_format,id,name,mode,create] (const NCAsyncWorker<File_result>* worker) {
+				static File_result result;
+				if (create) {
+					NC_CALL(nc_create(name.c_str(), mode, &result.id));
+				}
+				else {
+					NC_CALL(nc_open(name.c_str(), mode, &result.id));
+				}
+				NC_CALL(nc_inq_format_extended(result.id,&result.format,NULL));
+				return result;
+				// this->format=i;
+			},
+			[name,mode_arg] (Napi::Env env,File_result result)  {
+				return File::Build(env,result.id,name,mode_arg,result.format);
+			}
+			
+		))->Queue();
+
+	return deferred.Promise();
+}
+
+
 } // namespace netcdf4async 
+
