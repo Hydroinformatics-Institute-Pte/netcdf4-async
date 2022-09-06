@@ -164,41 +164,49 @@ Napi::Value File::Open(const Napi::CallbackInfo& info) {
 		} else if (format_arg == "netcdf4classic") {
 			open_format = NC_NETCDF4 | NC_CLASSIC_MODEL;
 		} else {
-            deferred.Reject(Napi::String::New(info.Env(), "Unknown file format"));
+            deferred.Reject(Napi::String::New(info.Env(), "NetCDF4: Unknown file format"));
     		return deferred.Promise();
 		}
 	}
+
+	int mode=0;
+	bool create=false;
+	if (mode_arg == "r") {
+		mode=NC_NOWRITE;
+	} else if (mode_arg == "w") {
+		mode=NC_WRITE;
+	} else if (mode_arg == "c") {
+		mode=open_format | NC_NOCLOBBER;
+		create=true;
+	} else if (mode_arg == "c!") {
+		mode=open_format | NC_CLOBBER;
+		create=true;
+	} else {
+		deferred.Reject(Napi::String::New(info.Env(), "NetCDF4: Unknown file mode"));
+		return deferred.Promise();
+	}
+
+
 	printf("Create\n");
 
 		(new NCAsyncWorker<File_result>(
 			env,
 			deferred,
-			[open_format,id,name,mode=mode_arg] (const NCAsyncWorker<File_result>* worker) {
+			[open_format,id,name,mode,create] (const NCAsyncWorker<File_result>* worker) {
 				printf("Inside\n");
 				printf("Try to open format %i\n",open_format);
-				printf("Try to open %s,%s,%i\n",name.c_str(),mode.c_str(),open_format);
+				printf("Try to open %s,%i,%i\n",name.c_str(),mode,open_format);
 				File_result result;
-
-				if (mode == "r") {
-					printf("r\n");
-					NC_CALL(nc_open(name.c_str(), NC_NOWRITE, &result.id));
-				} else if (mode == "w") {
-					printf("w\n");
-					NC_CALL(nc_open(name.c_str(), NC_WRITE, &result.id));
-				} else if (mode == "c") {
-					printf("c\n");
-					NC_CALL(nc_create(name.c_str(), open_format | NC_NOCLOBBER, &result.id));
-				} else if (mode == "c!") {
-					NC_CALL(nc_create(name.c_str(), open_format | NC_CLOBBER, &result.id));
-				} else {
-					throw std::runtime_error("NetCDF4: Unknown file mode");
-				}
 				printf("Opened");
+				if (create) {
+					NC_CALL(nc_create(name.c_str(), mode, &result.id));
+				}
+				else {
+					NC_CALL(nc_open(name.c_str(), mode, &result.id));
+				}
 				NC_CALL(nc_inq_format_extended(id,&result.format,NULL));
 				return result;
 				// this->format=i;
-				
-				
 			},
 			[name,mode_arg] (Napi::Env env,File_result result) mutable {
 				printf("Deferred");
