@@ -18,7 +18,6 @@
             ],
             "sources": [
                 "src/netcdf4-async.cpp",
-                "src/async.cpp",
                 "src/File.cpp"
             ],
             "target_name": "netcdf4-async",

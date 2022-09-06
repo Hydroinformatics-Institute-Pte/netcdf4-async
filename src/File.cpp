@@ -2,6 +2,7 @@
 #include <netcdf.h>
 #include <string>
 #include "netcdf4-async.h"
+#include "async.h"
 
 namespace netcdf4async {
 
@@ -93,9 +94,30 @@ Napi::Value File::Sync(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value File::Close(const Napi::CallbackInfo &info) {
-	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+	Napi::Env env = info.Env();
+
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(env);
 	if (!this->closed) {
-		deferred.Reject(Napi::String::New(info.Env(), "Not implemented yet"));
+		this->closed=true;
+		int id=this->id;
+		(new NCAsyncWorker<File_result>(
+			env,
+			deferred,
+			[id] (const NCAsyncWorker<File_result>* worker) {
+				static File_result result;
+				result.id=id;
+		        NC_VOID_CALL(nc_close(id))
+				return result;
+				// this->format=i;
+			},
+			[] (Napi::Env env,File_result result)  {
+				return Napi::Number::New(env,result.id);
+			//	deferred.Resolve();
+			}
+			
+		))->Queue();
+
+		
 	}
 	else {
 		deferred.Resolve(Napi::String::New(info.Env(),"File already closed"));
@@ -187,39 +209,26 @@ Napi::Value File::Open(const Napi::CallbackInfo& info) {
 	}
 
 
-	printf("Create\n");
-
 		(new NCAsyncWorker<File_result>(
 			env,
 			deferred,
 			[open_format,id,name,mode,create] (const NCAsyncWorker<File_result>* worker) {
-				printf("Inside\n");
-				printf("Try to open format %i\n",open_format);
-				printf("Try to open %s,%i,%i\n",name.c_str(),mode,open_format);
-				File_result result;
-				printf("Opened");
+				static File_result result;
 				if (create) {
 					NC_CALL(nc_create(name.c_str(), mode, &result.id));
 				}
 				else {
 					NC_CALL(nc_open(name.c_str(), mode, &result.id));
 				}
-				NC_CALL(nc_inq_format_extended(id,&result.format,NULL));
+				NC_CALL(nc_inq_format_extended(result.id,&result.format,NULL));
 				return result;
 				// this->format=i;
 			},
-			[name,mode_arg] (Napi::Env env,File_result result) mutable {
-				printf("Deferred");
+			[name,mode_arg] (Napi::Env env,File_result result)  {
 				return File::Build(env,result.id,name,mode_arg,result.format);
-			//	deferred.Resolve();
 			}
 			
 		))->Queue();
-	printf("Created\n");
-
-//		printf("Run queue\n");
-//		worker->Queue();
-
 
 	return deferred.Promise();
 }

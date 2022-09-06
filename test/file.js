@@ -11,11 +11,11 @@ const fixture1 = join(__dirname, "test_hgroups.nc");
 
 
 describe("File", async function () {
-  it.only("should throw an error when file not found", async function () {
+  it("should throw an error when file not found", async function () {
     await expect(netcdf4.open('DOESNOTEXIST','r')).to.rejectedWith("No such file or directory");
   });
 
-  it.only("should throw an error for wrong file mode",async function () {
+  it("should throw an error for wrong file mode",async function () {
     await expect(netcdf4.open('DOESNOTEXIST1','wrong mode')).to.rejectedWith("Unknown file mode");
   });
 
@@ -45,7 +45,6 @@ describe("File", async function () {
     expect(file.inspect()).to.eq(`[Closed hdf5 file ${fixture1}]`)
     expect(file.closed).true;
   });
-
 
   it("file contains variables", async function () {
     const file=await expect(netcdf4.open(fixture, "r")).to.be.fulfilled;
