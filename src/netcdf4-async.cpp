@@ -3,6 +3,7 @@
 #include <netcdf_meta.h>
 #include <memory>
 #include "netcdf4-async.h"
+#include "worker.h"
 
 
 namespace netcdf4async {
@@ -41,6 +42,7 @@ using namespace netcdf4async;
 
 Napi::Value open(const Napi::CallbackInfo& info) {
 
+
     return File::Open(info);
 /*
     void* native;
@@ -48,6 +50,7 @@ Napi::Value open(const Napi::CallbackInfo& info) {
     std::unique_ptr<File> file=std::unique_ptr<File>(static_cast<File *>(native));
     file->openAsync(info,deferred);
 */    
+
 }
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {

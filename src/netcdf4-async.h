@@ -11,7 +11,7 @@
 
 namespace netcdf4async {
 
-    extern const char *format_names[];
+  extern const char *format_names[];
 	extern const char *type_names[];
 
 
