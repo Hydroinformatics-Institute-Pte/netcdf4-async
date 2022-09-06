@@ -9,30 +9,14 @@ const fixture = join(__dirname, "testrh.nc");
 const fixture1 = join(__dirname, "test_hgroups.nc");
 
 
-describe("Dummy test - will be removed",async function() {
-  it("should run async open",async ()=>{
-    const file=await netcdf4.open('file.nc','w');
-    expect(file).to.have.property("name");
-    expect(file.name).to.equal("file.nc");
-    expect(file).to.have.property("format");
-    expect(file.format).to.equal("hdf5");
-    expect(file).to.have.property("close");
-    expect(file.inspect()).to.equal("[hdf5 file file.nc]");
-
-  });
-  it("shold rejected for closing ", async ()=>{
-    const file=await netcdf4.open('file.nc','w');
-    await expect(file.close()).to.be.rejectedWith("Not implemented yet");
-  });
-})
 
 describe("File", async function () {
-  it("should throw an error when file not found", async function () {
+  it.only("should throw an error when file not found", async function () {
     await expect(netcdf4.open('DOESNOTEXIST','r')).to.rejectedWith("No such file or directory");
   });
 
-  it("should throw an error for wrong file mode",async function () {
-    await expect(netcdf4.open('DOESNOTEXIST','wrong mode')).to.rejectedWith("Unknown file mode");
+  it.only("should throw an error for wrong file mode",async function () {
+    await expect(netcdf4.open('DOESNOTEXIST1','wrong mode')).to.rejectedWith("Unknown file mode");
   });
 
   it("should open a file", async function () {

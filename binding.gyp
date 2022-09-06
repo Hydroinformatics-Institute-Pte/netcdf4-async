@@ -17,8 +17,9 @@
                 '-std=c++14'
             ],
             "sources": [
-                "src/File.cpp",
-                "src/netcdf4-async.cpp"
+                "src/netcdf4-async.cpp",
+                "src/async.cpp",
+                "src/File.cpp"
             ],
             "target_name": "netcdf4-async",
             "include_dirs": ["<!@(node -p \"require('node-addon-api').include\")"],

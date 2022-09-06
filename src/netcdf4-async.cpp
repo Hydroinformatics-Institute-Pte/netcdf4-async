@@ -1,5 +1,7 @@
 #include <napi.h>
+#include <node_api.h>
 #include <netcdf_meta.h>
+#include <memory>
 #include "netcdf4-async.h"
 
 
@@ -34,27 +36,18 @@ namespace netcdf4async {
         "zarr"	   // NC_FORMATX_NCZARR
     };
 
-
 }
 using namespace netcdf4async;
 
 Napi::Value open(const Napi::CallbackInfo& info) {
-	Napi::Env env = info.Env();
-	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-	if (info.Length() < 2) {
-		deferred.Reject(Napi::String::New(info.Env(), "Wrong number of arguments"));
-		return deferred.Promise();
-	}
 
-	deferred.Resolve(
-		File::Build(env,
-			-1,
-			info[0].As<Napi::String>().Utf8Value(),
-			info[1].As<Napi::String>().Utf8Value(),
-			2
-			)
-	);
-	return deferred.Promise();
+    return File::Open(info);
+/*
+    void* native;
+    napi_unwrap(info.Env(),file_obj,&native);
+    std::unique_ptr<File> file=std::unique_ptr<File>(static_cast<File *>(native));
+    file->openAsync(info,deferred);
+*/    
 }
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {

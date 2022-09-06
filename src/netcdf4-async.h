@@ -11,7 +11,7 @@
 	do {                                                                                           \
 		int retval = FN;                                                                           \
 		if (retval != NC_NOERR) {                                                                  \
-			throw std::runtime_error("NetCDF4: " + nc_strerror(retval));                           \
+			throw std::runtime_error(string_format("NetCDF4: %s",nc_strerror(retval)));            \
 		}                                                                                          \
 	} while (false);
 
@@ -90,20 +90,45 @@ inline int get_type(const std::string &type_str) {
 	}
 }
 
+template <class NetCDFType> class NCAsyncWorker : public Napi::AsyncWorker {
+    
+    public:
 
+		typedef std::function<void(const NCAsyncWorker* worker)> NCMainFunc;
+		typedef std::function<Napi::Value(Napi::Env env,NetCDFType result)> NCRValFunc;
 
+        explicit NCAsyncWorker(Napi::Env &env, Napi::Promise::Deferred deferred, const NCMainFunc doit, const NCRValFunc rval);
+        ~NCAsyncWorker() override {printf("Dispose\n");};
+
+        void Execute() override;
+        void OnOK() override;
+        void OnError(Napi::Error const &error) override;
+		void setResult(NetCDFType result);
+		const NetCDFType getResult();
+
+    private:
+        Napi::Env &env;
+        Napi::Promise::Deferred deferred;
+	    const NCMainFunc doit;
+    	const NCRValFunc rval;
+		const NetCDFType result;
+
+};
 
 class File : public Napi::ObjectWrap<File> {
   public:
 	static void Init(Napi::Env env);
 	static Napi::Object Build(Napi::Env env,int ncid,std::string name,std::string mode,int type);
+	static Napi::Value Open (const Napi::CallbackInfo& info);
+	
+	explicit File(const Napi::CallbackInfo &info,int id,std::string name,std::string mode,int format);
 	explicit File(const Napi::CallbackInfo &info);
 	~File();
 
   private:
 	static Napi::FunctionReference constructor;
 
-	bool open(const char *filename, const int &mode, const int &format);
+	
 	// Napi::Value New(const Napi::CallbackInfo &info);
 	Napi::Value Close(const Napi::CallbackInfo &info);
 	Napi::Value Sync(const Napi::CallbackInfo &info);
@@ -112,11 +137,15 @@ class File : public Napi::ObjectWrap<File> {
 	Napi::Value IsClosed(const Napi::CallbackInfo &info);
 	Napi::Value GetFormat(const Napi::CallbackInfo &info);
 	Napi::Value Inspect(const Napi::CallbackInfo &info);
+	// Async calls
+
+//	void close();
+	
 
 	int id;
 	std::string name;
 	std::string mode;
-	std::string format;
+	int format;
 	Napi::Object group;
 	bool closed;
 };
