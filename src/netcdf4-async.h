@@ -58,7 +58,12 @@ class File : public Napi::ObjectWrap<File> {
 	/// @brief Is file close
 	bool closed;
 
-	
+	/// @brief Created and added default group to File
+	/// @param env 
+	/// @param  
+	void createDefaultGroup(Napi::Env env,std::string name);
+
+
 	// Napi::Value New(const Napi::CallbackInfo &info);
 
 	/// @brief Perform asyc close
