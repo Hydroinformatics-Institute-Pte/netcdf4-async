@@ -16,7 +16,12 @@ struct NCGroup_result
 	int id;
 	/// @brief Group name
 	std::string name;
-};    
+}; 
+struct Array_NCGroup_result 
+{
+	int ngrps;
+	NCGroup_result* array_NCGroup;
+};   
 
 Napi::FunctionReference Group::constructor;
 
@@ -80,17 +85,36 @@ Napi::Value Group::AddAttribute(const Napi::CallbackInfo &info) {
 
 Napi::Value Group::AddSubgroup(const Napi::CallbackInfo &info) {
 	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-	// if (info.Length() != static_cast<size_t>(1)) {
-	// 	Napi::TypeError::New(info.Env(), "Missing subgroup name").ThrowAsJavaScriptException();
-	// 	return info.Env().Undefined();
-	// }
-	// std::string new_name = info[0].As<Napi::String>().ToString();
-	// int new_id;
-	// NC_CALL(nc_def_grp(id, new_name.c_str(),&new_id));
-	// Napi::Object group = Group::Build(info.Env(), new_id);
-	// return group;
-	return deferred.Promise(); 
+	if (info.Length() != static_cast<size_t>(1)) {
+		deferred.Reject(Napi::String::New(info.Env(),"Missing subgroup name"));
+		return deferred.Promise();
+	}
+	std::string new_name = info[0].As<Napi::String>().ToString();
+	Napi::Env env = info.Env();
+	int id = this->id;
+
+	(new NCAsyncWorker<NCGroup_result>(
+		env,
+		deferred,
+		[id, new_name] (const NCAsyncWorker<NCGroup_result>* worker) {
+			int new_id;
+			NC_CALL(nc_def_grp(id, new_name.c_str(),&new_id));
+			static NCGroup_result result;
+            result.id = new_id;
+			result.name = new_name;
+            return result;
+		},
+		[] (Napi::Env env, NCGroup_result result) mutable {
+			Napi::Object group = Group::Build(env, result.id);
+			void* native;
+			napi_unwrap(env,group,&native);
+			Group* group_native=static_cast<Group *>(native);
+			group_native->set_name(result.name);
+         	return group;
+		}
+		
+	))->Queue();
+    return deferred.Promise();
 }
 
 Napi::Value Group::AddDimension(const Napi::CallbackInfo &info) {
@@ -258,6 +282,45 @@ Napi::Value Group::GetAttributes(const Napi::CallbackInfo &info) {
 Napi::Value Group::GetSubgroups(const Napi::CallbackInfo &info) {
 	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+	Napi::Env env = info.Env();
+	int id = this->id;
+	(new NCAsyncWorker<std::vector<NCGroup_result>>(
+		env,
+		deferred,
+		[id] (const NCAsyncWorker<std::vector<NCGroup_result>>* worker) {
+			int ngrps;
+			NC_CALL(nc_inq_grps(id, &ngrps, NULL));
+			int *grp_ids = new int[ngrps];
+			NC_CALL(nc_inq_grps(id, NULL, grp_ids));
+			std::vector<NCGroup_result> result;
+			char name[NC_MAX_NAME + 1];
+			for (int i = 0; i < ngrps; ++i) {
+				int retval = nc_inq_grpname(grp_ids[i], name);
+				if (retval == NC_NOERR) {
+					NCGroup_result sub_group;
+					sub_group.id = grp_ids[i];
+					sub_group.name = name;
+					result.push_back(sub_group);
+				}
+			}
+
+            return result;
+		},
+		[] (Napi::Env env, std::vector<NCGroup_result> result) mutable {
+			Napi::Object subgroups = Napi::Object::New(env);
+			for (auto nc_group= result.begin(); nc_group != result.end(); nc_group++){
+				Napi::Object group = Group::Build(env, nc_group->id);
+				void* native;
+				napi_unwrap(env,group,&native);
+				Group* group_native=static_cast<Group *>(native);
+				group_native->set_name(nc_group->name);
+				subgroups.Set(nc_group->name, group);
+			}
+         	return subgroups;
+		}
+		
+	))->Queue();
+
 	// int ngrps;
 	// NC_CALL(nc_inq_grps(this->id, &ngrps, NULL));
 	// int *grp_ids = new int[ngrps];
@@ -284,6 +347,7 @@ Napi::Value Group::GetName(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
     Napi::Env env = info.Env();
     int id=this->id;
+	Group * pGroup = this;
     (new NCAsyncWorker<NCGroup_result>(
 		env,
 		deferred,
@@ -295,7 +359,8 @@ Napi::Value Group::GetName(const Napi::CallbackInfo &info) {
             result.name = std::string(name);
             return result;
 		},
-		[] (Napi::Env env, NCGroup_result result) mutable {
+		[pGroup] (Napi::Env env, NCGroup_result result) mutable {
+			pGroup->set_name(result.name);
          	return Napi::String::New(env, result.name);
 		}
 		
@@ -312,6 +377,7 @@ Napi::Value Group::SetName(const Napi::CallbackInfo &info) {
 	std::string new_name = info[0].As<Napi::String>().Utf8Value();
     Napi::Env env = info.Env();
     int id=this->id;
+	Group * pGroup = this;
     (new NCAsyncWorker<NCGroup_result>(
 		env,
 		deferred,
@@ -322,7 +388,8 @@ Napi::Value Group::SetName(const Napi::CallbackInfo &info) {
             NC_CALL(nc_rename_grp(id, new_name.c_str()));
             return result;
 		},
-		[] (Napi::Env env, NCGroup_result result) mutable {
+		[pGroup] (Napi::Env env, NCGroup_result result) mutable {
+			pGroup->set_name(result.name);
          	return Napi::String::New(env, result.name);
 		}
 		
@@ -335,6 +402,7 @@ Napi::Value Group::GetFullname(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
     Napi::Env env = info.Env();
     int id=this->id;
+	Group * pGroup = this;
     (new NCAsyncWorker<NCGroup_result>(
 	    env,
 	    deferred,
@@ -350,7 +418,8 @@ Napi::Value Group::GetFullname(const Napi::CallbackInfo &info) {
             delete[] name;
             return result;
 	    },
-	    [] (Napi::Env env, NCGroup_result result) {
+	    [pGroup] (Napi::Env env, NCGroup_result result) {
+			pGroup->set_name(result.name);
 		    return Napi::String::New(env, result.name);
 	   	}
 	
@@ -365,5 +434,9 @@ Napi::Value Group::Inspect(const Napi::CallbackInfo &info) {
 			this->name.c_str()
 		)
 	);
+}
+
+void Group::set_name(std::string groupname){
+	this->name = name;
 }
 } // namespace netcdf4js

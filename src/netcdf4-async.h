@@ -105,9 +105,7 @@ class Group : public Napi::ObjectWrap<Group> {
 	static void Init(Napi::Env env);
 	static Napi::Object Build(Napi::Env env, int id);
 	bool get_name(char *name) const;
-
-	int id;
-	std::string name;
+	void set_name(std::string groupname);
 
   private:
 	static Napi::FunctionReference constructor;
@@ -126,6 +124,9 @@ class Group : public Napi::ObjectWrap<Group> {
 	Napi::Value AddSubgroup(const Napi::CallbackInfo &info);
 	Napi::Value AddVariable(const Napi::CallbackInfo &info);
 	Napi::Value Inspect(const Napi::CallbackInfo &info);
+
+	int id;
+	std::string name;
 };
 
 
