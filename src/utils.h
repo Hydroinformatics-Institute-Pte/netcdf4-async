@@ -85,5 +85,42 @@ inline int get_type(const std::string &type_str) {
 		return NC2_ERR;
 	}
 }
+
+/**
+ * @brief Get the type object
+ * 
+ * @param type_str 
+ * @return int 
+ */
+inline std::string get_type_string(const int &type) {
+	if (type == NC_BYTE) {
+		return "byte";
+	} else if (type == NC_CHAR) {
+		return "char";
+	} else if (type == NC_SHORT) {
+		return "short";
+	} else if (type == NC_INT) {
+		return "int";
+	} else if (type == NC_FLOAT) {
+		return "float";
+	} else if (type == NC_DOUBLE) {
+		return "double";
+	} else if (type == NC_UBYTE) {
+		return "ubyte";
+	} else if (type == NC_USHORT) {
+		return "ushort";
+	} else if (type == NC_UINT) {
+		return "uint";
+	} else if (type == NC_UINT64) {
+		return "uint64";
+	} else if (type == NC_INT64) {
+		return "int64";
+	} else if (type == NC_STRING) {
+		return "string";
+	} else {
+		return "undefined type";
+	}
+}
+
 }
 #endif
