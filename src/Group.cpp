@@ -70,6 +70,11 @@ void Group::Init(Napi::Env env) {
                 InstanceMethod("setName", &Group::SetName),
                 InstanceMethod("getPath", &Group::GetPath),
 
+		        InstanceMethod("getSubgroups",&Group::GetSubgroups),
+		        InstanceMethod("getSubgroup",&Group::GetSubgroup),
+		        InstanceMethod("addSubgroup", &Group::AddSubgroup),
+
+
 		        InstanceMethod("getDimensions",&Group::GetDimensions),
 		        InstanceMethod("addDimension", &Group::AddDimension),
 //				InstanceMethod("renameDimension",&Group::RenameDimension),
@@ -77,12 +82,10 @@ void Group::Init(Napi::Env env) {
 		        InstanceMethod("getAttributes", &Group::GetAttributes),
 		        InstanceMethod("addAttribute", &Group::AddAttribute),
 
-				InstanceMethod("addVariable", &Group::AddVariable),
-		        InstanceMethod("addSubgroup", &Group::AddSubgroup),
-		        InstanceMethod("inspect", &Group::Inspect),
-//                InstanceAccessor<&Group::GetId>("id"),
 		        InstanceMethod("getVariables",&Group::GetVariables),
-		        InstanceMethod("getSubgroups",&Group::GetSubgroups)
+				InstanceMethod("addVariable", &Group::AddVariable),
+		        InstanceMethod("inspect", &Group::Inspect)
+//                InstanceAccessor<&Group::GetId>("id"),
 			}
 		);
     constructor = Napi::Persistent(func);
@@ -360,6 +363,46 @@ Napi::Value Group::GetSubgroups(const Napi::CallbackInfo &info) {
 
 	return worker->Deferred().Promise(); 
 }
+
+
+Napi::Value Group::GetSubgroup(const Napi::CallbackInfo &info) {
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+	Napi::Env env = info.Env();
+	if (info.Length() != static_cast<size_t>(1)) {
+			deferred.Reject(Napi::String::New(env, "Expected subgroup name"));
+			return deferred.Promise();
+	}
+
+	std::string group_name=info[0].As<Napi::String>().ToString();
+	auto worker=new NCAsyncWorker<NCGroup_result>(
+		env,
+		[id=this->id,group_name] (const NCAsyncWorker<NCGroup_result>* worker) {
+			int ngrps;
+			NC_CALL(nc_inq_grps(id, &ngrps, NULL));
+			int *grp_ids = new int[ngrps];
+			NC_CALL(nc_inq_grps(id, NULL, grp_ids));
+			char name[NC_MAX_NAME + 1];
+			for (int i = 0; i < ngrps; ++i) {
+				int retval = nc_inq_grpname(grp_ids[i], name);
+				if (retval == NC_NOERR && group_name==name) {
+					NCGroup_result result;
+					result.id = grp_ids[i];
+					result.name = name;
+					return result;
+				}
+			}
+			throw std::runtime_error(string_format("NetCDF4: Bad or missing group \"%s\"",group_name.c_str()));
+		},
+		[] (Napi::Env env,NCGroup_result result) {
+			return Group::Build(env, result.id,result.name);
+		}
+		
+	);
+	worker->Queue();
+
+	return worker->Deferred().Promise(); 
+}
+
 
 Napi::Value Group::GetName(const Napi::CallbackInfo &info) {
 //    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());

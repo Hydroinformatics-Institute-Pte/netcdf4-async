@@ -70,6 +70,22 @@ describe("Group", function () {
     await expect(subgroups.mozaic_flight_2012030419144751_ascent.getPath()).become('/mozaic_flight_2012030419144751_ascent');
   });
 
+  it("should get subgroup", async function () {
+    const subgroup = await expect(file.root.getSubgroup("mozaic_flight_2012030419144751_ascent")).to.be.fulfilled;
+    expect(subgroup.inspect(),'[Group mozaic_flight_2012030419144751_ascent]');
+    await expect(subgroup.getName()).become('mozaic_flight_2012030419144751_ascent');
+    await expect(subgroup.getPath()).become('/mozaic_flight_2012030419144751_ascent');
+  });
+
+  it("getSubgroup(..) should throw with unexisting subgroup", async function () {
+    const subgroup = await expect(file.root.getSubgroup("no-exist")).to.rejectedWith("NetCDF4: Bad or missing group \"no-exist\"");
+  });
+
+  it("getSubgroup(..) should throw when parameters missing", async function () {
+    const subgroup = await expect(file.root.getSubgroup()).to.rejectedWith("Expected subgroup name");
+  });
+
+
   it("should rename groups", async function () {
     var subgroups = await expect(file.root.getSubgroups()).to.be.fulfilled;
     var subgroup = subgroups.mozaic_flight_2012030419144751_ascent;
@@ -146,9 +162,11 @@ describe("Group", function () {
     expect(vars.test_variable.inspect(),'[Variable test_variable, type byte, 1 dimension(s)]');
   });
 
-  it.skip("should read list of attributes", function () {
+  it("should read list of attributes", async function () {
     const attributes =
-      file.root.subgroups["mozaic_flight_2012030419144751_ascent"].attributes;
+      await expect(
+        file.root.getSubgroup("mozaic_flight_2012030419144751_ascent").then(group=>group.getAttributes()))
+        .to.be.fulfilled;
     expect(attributes).to.have.property("airport_dep");
     expect(attributes).to.have.property("flight");
     expect(attributes).to.have.property("level");
@@ -161,15 +179,16 @@ describe("Group", function () {
     expect(attributes).to.have.property("time_arr");
   });
 
-  it.skip("should add attribute",function() {
-    expect(file.root.attributes).to.not.have.property("root_attr_prop");
-    const attr=file.root.addAttribute("root_attr_prop","string","root attr property");
-    expect(attr.inspect(),"[Attribute root_attr_prop, type string]");
-    expect(file.root.attributes).to.have.property("root_attr_prop");
-    file.close();
-    file = new netcdf4.File(tempFileName, "r");
-    expect(file.root.attributes).to.have.property("root_attr_prop");
-    expect(file.root.attributes.root_attr_prop.inspect(),"[Attribute root_attr_prop, type string]");
+  it("should add attribute",async function() {
+    await expect(file.root.getAttributes()).eventually.to.not.have.property("root_attr_prop");
+    const attr=await expect(file.root.addAttribute("root_attr_prop","string","root attr property")).to.be.fulfilled;
+    expect(attr).deep.equal({"root_attr_prop":{"type":"string","value":"root attr property"}});
+    expect(file.root.attributes).eventually.to.have.property("root_attr_prop");
+    await file.close();
+    file = await netcdf4.open(tempFileName, "r");
+    await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
+    await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop").to.deep.equal("root attr property");
+    await expect(file.root.getAttributes(true)).eventually.to.have.property("root_attr_prop").to.deep.equal({"type":"string","value":"root attr property"});
   })  
 
 

@@ -243,6 +243,7 @@ From original documentation:
     * `renameAttribute(oldName,newName)`: Rename attribute
     * `deleteAttribute(name)`: Delete attribute
     * `getSubrgroups(..)` : Resolve to associative array of subgroups of group
+    * `getSubgroups(name)` : Resolve to subgroup
     * `addSubgroup(name)` : Resolve to new created subgroup
 
 ### **Variable**

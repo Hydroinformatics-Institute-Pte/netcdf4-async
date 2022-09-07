@@ -110,18 +110,23 @@ class Group : public Napi::ObjectWrap<Group> {
 	static Napi::FunctionReference constructor;
 
 	Napi::Value GetId(const Napi::CallbackInfo &info);
-	Napi::Value GetVariables(const Napi::CallbackInfo &info);
-	Napi::Value GetDimensions(const Napi::CallbackInfo &info);
-	Napi::Value GetUnlimited(const Napi::CallbackInfo &info);
-	Napi::Value GetAttributes(const Napi::CallbackInfo &info);
-	Napi::Value GetSubgroups(const Napi::CallbackInfo &info);
 	Napi::Value GetName(const Napi::CallbackInfo &info);
 	Napi::Value SetName(const Napi::CallbackInfo &info);
 	Napi::Value GetPath(const Napi::CallbackInfo &info);
-	Napi::Value AddAttribute(const Napi::CallbackInfo &info);
-	Napi::Value AddDimension(const Napi::CallbackInfo &info);
+
+	Napi::Value GetSubgroups(const Napi::CallbackInfo &info);
 	Napi::Value AddSubgroup(const Napi::CallbackInfo &info);
+	Napi::Value GetSubgroup(const Napi::CallbackInfo &info);
+
+	Napi::Value GetVariables(const Napi::CallbackInfo &info);
 	Napi::Value AddVariable(const Napi::CallbackInfo &info);
+
+	Napi::Value GetDimensions(const Napi::CallbackInfo &info);
+	Napi::Value AddDimension(const Napi::CallbackInfo &info);
+
+	Napi::Value GetAttributes(const Napi::CallbackInfo &info);
+	Napi::Value AddAttribute(const Napi::CallbackInfo &info);
+
 	Napi::Value Inspect(const Napi::CallbackInfo &info);
 
 	int id;
