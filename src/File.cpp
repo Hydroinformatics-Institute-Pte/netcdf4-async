@@ -104,7 +104,7 @@ File::File(const Napi::CallbackInfo &info) : Napi::ObjectWrap<File>(info) {
 
 //	Napi::Object group = info[3].As<Napi::Object>();
 //	this->Value().Set("root", group);
-//	closed=true;
+	closed=false;
 }
 
 /**
@@ -120,13 +120,13 @@ File::File(
 		const Napi::CallbackInfo &info,
 		int id,std::string name,std::string mode,int format
 	) : Napi::ObjectWrap<File>(info),id(id),name(name),mode(mode),format(format) {
-	closed=true;
+	closed=false;
 }
 
 
 void File::createDefaultGroup(Napi::Env env,std::string name) {
-	printf("Default group=%s\n",name.c_str());
-	this->Value().Set("root",Napi::String::New(env,name));
+	// printf("Default group=%s\n",name.c_str());
+	this->Value().Set("root",Group::Build(env,id,name));
 }
 
 
@@ -147,7 +147,6 @@ Napi::Value File::Open(const Napi::CallbackInfo& info) {
 	std::string name = info[0].As<Napi::String>().Utf8Value();
 	std::string mode_arg = info[1].As<Napi::String>().Utf8Value();
 	int open_format = NC_NETCDF4;
-	int id=-1;
 	Napi::Env env = info.Env();
 
 	if (info.Length() > 2) {
@@ -188,7 +187,7 @@ Napi::Value File::Open(const Napi::CallbackInfo& info) {
 	(new NCAsyncWorker<NCFile_result>(
 		env,
 		deferred,
-		[open_format,id,name,mode,create] (const NCAsyncWorker<NCFile_result>* worker) {
+		[name,mode,create] (const NCAsyncWorker<NCFile_result>* worker) {
 			static NCFile_result result;
 			if (create) {
 				NC_CALL(nc_create(name.c_str(), mode, &result.id));

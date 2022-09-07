@@ -17,6 +17,14 @@ struct NCGroup_result
 	/// @brief Group name
 	std::string name;
 }; 
+
+struct NCGroup_list
+{
+	std::vector<NCGroup_result> groups;
+};
+
+
+
 struct Array_NCGroup_result 
 {
 	int ngrps;
@@ -25,21 +33,22 @@ struct Array_NCGroup_result
 
 Napi::FunctionReference Group::constructor;
 
-Napi::Object Group::Build(Napi::Env env, int id) {
-	return constructor.New({Napi::Number::New(env, id)});
+Napi::Object Group::Build(Napi::Env env, int id,std::string name) {
+	return constructor.New({
+		Napi::Number::New(env, id),
+		Napi::String::New(env,name)
+	});
 }
 
 Group::Group(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Group>(info) {
-	if (info.Length() < 1) {
+	if (info.Length() < 2) {
 		Napi::TypeError::New(info.Env(), "Wrong number of arguments").ThrowAsJavaScriptException();
 		return;
 	}
 
 	id = info[0].As<Napi::Number>().Int32Value();
+	name = info[1].As<Napi::String>().Utf8Value();
 }
-
-Group::Group(const Napi::CallbackInfo &info, int id, std::string name):
-    Napi::ObjectWrap<Group>(info), id(id), name(name) {}
 
 void Group::Init(Napi::Env env) {
 
@@ -48,20 +57,23 @@ void Group::Init(Napi::Env env) {
     Napi::Function func =
 		DefineClass(env, "Group",
 			{
-				InstanceMethod("addVariable", &Group::AddVariable),
-		        InstanceMethod("addDimension", &Group::AddDimension),
-		        InstanceMethod("addSubgroup", &Group::AddSubgroup),
-		        InstanceMethod("addAttribute", &Group::AddAttribute),
-		        InstanceMethod("inspect", &Group::Inspect),
                 InstanceMethod("getName", &Group::GetName),
                 InstanceMethod("setName", &Group::SetName),
-                InstanceAccessor<&Group::GetId>("id"),
-		        InstanceAccessor<&Group::GetVariables>("variables"),
-		        InstanceAccessor<&Group::GetDimensions>("dimensions"),
-		        InstanceAccessor<&Group::GetUnlimited>("unlimited"),
-		        InstanceAccessor<&Group::GetAttributes>("attributes"),
-		        InstanceAccessor<&Group::GetSubgroups>("subgroups"),
-		        InstanceAccessor<&Group::GetFullname>("fullname"),
+                InstanceMethod("getPath", &Group::GetPath),
+
+		        InstanceMethod("getDimensions",&Group::GetDimensions),
+		        InstanceMethod("addDimension", &Group::AddDimension),
+//				InstanceMethod("renameDimension",&Group::RenameDimension),
+
+		        InstanceMethod("getAttributes", &Group::GetAttributes),
+		        InstanceMethod("addAttribute", &Group::AddAttribute),
+
+				InstanceMethod("addVariable", &Group::AddVariable),
+		        InstanceMethod("addSubgroup", &Group::AddSubgroup),
+		        InstanceMethod("inspect", &Group::Inspect),
+//                InstanceAccessor<&Group::GetId>("id"),
+		        InstanceMethod("getVariables",&Group::GetVariables),
+		        InstanceMethod("getSubgroups",&Group::GetSubgroups)
 			}
 		);
     constructor = Napi::Persistent(func);
@@ -104,12 +116,8 @@ Napi::Value Group::AddSubgroup(const Napi::CallbackInfo &info) {
 			result.name = new_name;
             return result;
 		},
-		[] (Napi::Env env, NCGroup_result result) mutable {
-			Napi::Object group = Group::Build(env, result.id);
-			void* native;
-			napi_unwrap(env,group,&native);
-			Group* group_native=static_cast<Group *>(native);
-			group_native->set_name(result.name);
+		[] (Napi::Env env, NCGroup_result result) {
+			Napi::Object group = Group::Build(env, result.id,result.name);
          	return group;
 		}
 		
@@ -239,28 +247,6 @@ Napi::Value Group::GetDimensions(const Napi::CallbackInfo &info) {
     return deferred.Promise();
 }
 
-Napi::Value Group::GetUnlimited(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-	
-	// int ndims;
-	// NC_CALL(nc_inq_unlimdims(this->id, &ndims, NULL));
-	
-	// int *dim_ids = new int[ndims];
-	// NC_CALL(nc_inq_unlimdims(this->id, NULL, dim_ids));
-	
-	// Napi::Object dims = Napi::Object::New(info.Env());
-    // char name[NC_MAX_NAME + 1];
-	// for (int i = 0; i < ndims; ++i) {
-	// 	Napi::Object dim = Dimension::Build(info.Env(), this->id, dim_ids[i]);
-	// 	NC_CALL(nc_inq_dimname(this->id, dim_ids[i], name));
-	// 	dims.Set(name, dim);
-	// }
-	
-	// delete[] dim_ids;
-	// return dims;
-    return deferred.Promise();
-}
 
 Napi::Value Group::GetAttributes(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
@@ -281,18 +267,17 @@ Napi::Value Group::GetAttributes(const Napi::CallbackInfo &info) {
 
 Napi::Value Group::GetSubgroups(const Napi::CallbackInfo &info) {
 	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
 	Napi::Env env = info.Env();
 	int id = this->id;
-	(new NCAsyncWorker<std::vector<NCGroup_result>>(
+	(new NCAsyncWorker<NCGroup_list>(
 		env,
 		deferred,
-		[id] (const NCAsyncWorker<std::vector<NCGroup_result>>* worker) {
+		[id] (const NCAsyncWorker<NCGroup_list>* worker) {
 			int ngrps;
 			NC_CALL(nc_inq_grps(id, &ngrps, NULL));
 			int *grp_ids = new int[ngrps];
 			NC_CALL(nc_inq_grps(id, NULL, grp_ids));
-			std::vector<NCGroup_result> result;
+			NCGroup_list result;
 			char name[NC_MAX_NAME + 1];
 			for (int i = 0; i < ngrps; ++i) {
 				int retval = nc_inq_grpname(grp_ids[i], name);
@@ -300,46 +285,23 @@ Napi::Value Group::GetSubgroups(const Napi::CallbackInfo &info) {
 					NCGroup_result sub_group;
 					sub_group.id = grp_ids[i];
 					sub_group.name = name;
-					result.push_back(sub_group);
+					result.groups.push_back(sub_group);
 				}
 			}
 
             return result;
 		},
-		[] (Napi::Env env, std::vector<NCGroup_result> result) mutable {
+		[] (Napi::Env env,NCGroup_list result) {
 			Napi::Object subgroups = Napi::Object::New(env);
-			for (auto nc_group= result.begin(); nc_group != result.end(); nc_group++){
-				Napi::Object group = Group::Build(env, nc_group->id);
-				void* native;
-				napi_unwrap(env,group,&native);
-				Group* group_native=static_cast<Group *>(native);
-				group_native->set_name(nc_group->name);
-				subgroups.Set(nc_group->name, group);
+			for (auto nc_group= result.groups.begin(); nc_group != result.groups.end(); nc_group++){
+				Napi::Object group = Group::Build(env, nc_group->id,nc_group->name);
+				subgroups.Set(Napi::String::New(env,nc_group->name), group);
 			}
          	return subgroups;
 		}
 		
 	))->Queue();
 
-	// int ngrps;
-	// NC_CALL(nc_inq_grps(this->id, &ngrps, NULL));
-	// int *grp_ids = new int[ngrps];
-
-	// NC_CALL(nc_inq_grps(this->id, NULL, grp_ids));
-
-	// Napi::Object subgroups = Napi::Object::New(info.Env());
-
-	// char name[NC_MAX_NAME + 1];
-	// for (int i = 0; i < ngrps; ++i) {
-	// 	Napi::Object subgroup = Group::Build(info.Env(), grp_ids[i]);
-	// 	int retval = nc_inq_grpname(grp_ids[i], name);
-	// 	if (retval == NC_NOERR) {
-	// 		subgroups.Set(name, subgroup);
-	// 	}
-	// }
-
-	// delete[] grp_ids;
-	// return subgroups;
 	return deferred.Promise(); 
 }
 
@@ -398,7 +360,7 @@ Napi::Value Group::SetName(const Napi::CallbackInfo &info) {
 }
 
 
-Napi::Value Group::GetFullname(const Napi::CallbackInfo &info) {
+Napi::Value Group::GetPath(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
     Napi::Env env = info.Env();
     int id=this->id;
@@ -406,7 +368,7 @@ Napi::Value Group::GetFullname(const Napi::CallbackInfo &info) {
     (new NCAsyncWorker<NCGroup_result>(
 	    env,
 	    deferred,
-	    [id] (const NCAsyncWorker<NCGroup_result>* worker) {
+	    [id,pGroup] (const NCAsyncWorker<NCGroup_result>* worker) {
 		    static NCGroup_result result;
             result.id = id;
             size_t len;
@@ -419,7 +381,6 @@ Napi::Value Group::GetFullname(const Napi::CallbackInfo &info) {
             return result;
 	    },
 	    [pGroup] (Napi::Env env, NCGroup_result result) {
-			pGroup->set_name(result.name);
 		    return Napi::String::New(env, result.name);
 	   	}
 	

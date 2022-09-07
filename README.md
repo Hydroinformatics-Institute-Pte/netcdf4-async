@@ -239,7 +239,7 @@ From original documentation:
                 },
             }
             ```
-    * `setAttribute(name,value)`: Set value of attribute
+    * `setAttribute(name,value,type?)`: Set value of attribute
     * `renameAttribute(oldName,newName)`: Rename attribute
     * `deleteAttribute(name)`: Delete attribute
     * `getSubrgroups(..)` : Resolve to associative array of subgroups of group

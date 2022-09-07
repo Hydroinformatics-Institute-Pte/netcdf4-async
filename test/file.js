@@ -1,9 +1,10 @@
 const chai = require("chai");
 const expect = chai.expect;
+const chaiAsPromised = require('chai-as-promised');
+chai.use(chaiAsPromised);
+
 const netcdf4 = require("..");
 const { join } = require("path");
-const chaiAsPromised = require('chai-as-promised')
-chai.use(chaiAsPromised)
 
 const fixture = join(__dirname, "testrh.nc");
 const fixture1 = join(__dirname, "test_hgroups.nc");

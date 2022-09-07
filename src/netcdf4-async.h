@@ -101,9 +101,8 @@ class File : public Napi::ObjectWrap<File> {
 class Group : public Napi::ObjectWrap<Group> {
   public:
 	Group(const Napi::CallbackInfo &info);
-	Group(const Napi::CallbackInfo &info, int id, std::string name);
 	static void Init(Napi::Env env);
-	static Napi::Object Build(Napi::Env env, int id);
+	static Napi::Object Build(Napi::Env env, int id, std::string name);
 	bool get_name(char *name) const;
 	void set_name(std::string groupname);
 
@@ -118,7 +117,7 @@ class Group : public Napi::ObjectWrap<Group> {
 	Napi::Value GetSubgroups(const Napi::CallbackInfo &info);
 	Napi::Value GetName(const Napi::CallbackInfo &info);
 	Napi::Value SetName(const Napi::CallbackInfo &info);
-	Napi::Value GetFullname(const Napi::CallbackInfo &info);
+	Napi::Value GetPath(const Napi::CallbackInfo &info);
 	Napi::Value AddAttribute(const Napi::CallbackInfo &info);
 	Napi::Value AddDimension(const Napi::CallbackInfo &info);
 	Napi::Value AddSubgroup(const Napi::CallbackInfo &info);
