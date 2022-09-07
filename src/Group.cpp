@@ -18,11 +18,20 @@ struct NCGroup_result
 	std::string name;
 }; 
 
-struct NCGroup_list
+template <class NCResult> struct NCGroup_list
 {
-	std::vector<NCGroup_result> groups;
+	std::vector<NCResult> groups;
 };
 
+struct NCGroup_dims
+{
+	/// @brief File id
+	int id;
+	/// @brief Group name
+	std::string name;
+	/// @brief Dimension len or NC_UNLIMITED for unlimited
+	size_t len;
+}; 
 
 
 struct Array_NCGroup_result 
@@ -224,27 +233,60 @@ Napi::Value Group::GetVariables(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value Group::GetDimensions(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-	// int ndims;
-	// NC_CALL(nc_inq_dimids(this->id, &ndims, NULL, 0));
-	// int *dim_ids = new int[ndims];
-	// NC_CALL(nc_inq_dimids(this->id, NULL, dim_ids, 0));
+	bool unlimited=false;
+	Napi::Env env = info.Env();
+	if (info.Length() >= static_cast<size_t>(1)) {
+		unlimited=info[0].As<Napi::Boolean>().Value();
+	}
+//    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+//    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+//	int id = this->id;
+	auto worker=new NCAsyncWorker<NCGroup_list<NCGroup_dims>>(
+		env,
+		[id=this->id,unlimited] (const NCAsyncWorker<NCGroup_list<NCGroup_dims>>* worker) {
+			int ndims;
+			if (unlimited) {
+				NC_CALL(nc_inq_unlimdims(id, &ndims, NULL));
+			}
+			else {
+				NC_CALL(nc_inq_dimids(id, &ndims, NULL, 0));
+			}
+			int *dim_ids = new int[ndims];
+			if (unlimited) {
+				NC_CALL(nc_inq_unlimdims(id, NULL, dim_ids));
+			}
+			else {
+				NC_CALL(nc_inq_dimids(id, NULL, dim_ids, 0));
+			}
+			NCGroup_list<NCGroup_dims> result;
+			char name[NC_MAX_NAME + 1];
+			size_t len;
+			for (int i = 0; i < ndims; ++i) {
+				int retval = nc_inq_dim(id, dim_ids[i], name,&len);
+				if (retval == NC_NOERR) {
+					NCGroup_dims dim;
+					dim.id = dim_ids[i];
+					dim.name = name;
+					dim.len = len;
+					result.groups.push_back(dim);
+				}
+			}
+			return result;
+		},
+		[] (Napi::Env env,NCGroup_list<NCGroup_dims> result) {
+			Napi::Object dimensions = Napi::Object::New(env);
+			for (auto nc_dim= result.groups.begin(); nc_dim != result.groups.end(); nc_dim++){
+				auto len = nc_dim->len==NC_UNLIMITED?Napi::String::New(env,"unlimited"):Napi::Number::New(env,nc_dim->len);
+				dimensions.Set(Napi::String::New(env,nc_dim->name), len);
+			}
+         	return dimensions;
+		}
 
-	// Napi::Object dims = Napi::Object::New(info.Env());
+	);
+	worker->Queue();
 
-	// char name[NC_MAX_NAME + 1];
-	// for (int i = 0; i < ndims; ++i) {
-	// 	Napi::Object dim = Dimension::Build(info.Env(), this->id, dim_ids[i]);
+	return worker->Deferred().Promise(); 
 
-	// 	int retval = nc_inq_dimname(this->id, dim_ids[i], name);
-	// 	if (retval == NC_NOERR) {
-	// 		dims.Set(name, dim);
-	// 	}
-	// }
-	// delete[] dim_ids;
-	// return dims;
-    return deferred.Promise();
 }
 
 
@@ -269,14 +311,14 @@ Napi::Value Group::GetSubgroups(const Napi::CallbackInfo &info) {
 //	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
 	Napi::Env env = info.Env();
 	int id = this->id;
-	auto worker=new NCAsyncWorker<NCGroup_list>(
+	auto worker=new NCAsyncWorker<NCGroup_list<NCGroup_result>>(
 		env,
-		[id] (const NCAsyncWorker<NCGroup_list>* worker) {
+		[id] (const NCAsyncWorker<NCGroup_list<NCGroup_result>>* worker) {
 			int ngrps;
 			NC_CALL(nc_inq_grps(id, &ngrps, NULL));
 			int *grp_ids = new int[ngrps];
 			NC_CALL(nc_inq_grps(id, NULL, grp_ids));
-			NCGroup_list result;
+			NCGroup_list<NCGroup_result> result;
 			char name[NC_MAX_NAME + 1];
 			for (int i = 0; i < ngrps; ++i) {
 				int retval = nc_inq_grpname(grp_ids[i], name);
@@ -290,7 +332,7 @@ Napi::Value Group::GetSubgroups(const Napi::CallbackInfo &info) {
 
             return result;
 		},
-		[] (Napi::Env env,NCGroup_list result) {
+		[] (Napi::Env env,NCGroup_list<NCGroup_result> result) {
 			Napi::Object subgroups = Napi::Object::New(env);
 			for (auto nc_group= result.groups.begin(); nc_group != result.groups.end(); nc_group++){
 				Napi::Object group = Group::Build(env, nc_group->id,nc_group->name);
