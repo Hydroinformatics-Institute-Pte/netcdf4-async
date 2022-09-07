@@ -266,12 +266,11 @@ Napi::Value Group::GetAttributes(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value Group::GetSubgroups(const Napi::CallbackInfo &info) {
-	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+//	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
 	Napi::Env env = info.Env();
 	int id = this->id;
-	(new NCAsyncWorker<NCGroup_list>(
+	auto worker=new NCAsyncWorker<NCGroup_list>(
 		env,
-		deferred,
 		[id] (const NCAsyncWorker<NCGroup_list>* worker) {
 			int ngrps;
 			NC_CALL(nc_inq_grps(id, &ngrps, NULL));
@@ -300,19 +299,19 @@ Napi::Value Group::GetSubgroups(const Napi::CallbackInfo &info) {
          	return subgroups;
 		}
 		
-	))->Queue();
+	);
+	worker->Queue();
 
-	return deferred.Promise(); 
+	return worker->Deferred().Promise(); 
 }
 
 Napi::Value Group::GetName(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+//    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
     Napi::Env env = info.Env();
     int id=this->id;
 	Group * pGroup = this;
-    (new NCAsyncWorker<NCGroup_result>(
+    auto worker=new NCAsyncWorker<NCGroup_result>(
 		env,
-		deferred,
 		[id] (const NCAsyncWorker<NCGroup_result>* worker) {
 			static NCGroup_result result;
             result.id = id;
@@ -326,8 +325,9 @@ Napi::Value Group::GetName(const Napi::CallbackInfo &info) {
          	return Napi::String::New(env, result.name);
 		}
 		
-	))->Queue();
-    return deferred.Promise();
+	);
+	worker->Queue();
+    return worker->Deferred().Promise();
 }
 
 Napi::Value Group::SetName(const Napi::CallbackInfo &info) {
@@ -361,13 +361,12 @@ Napi::Value Group::SetName(const Napi::CallbackInfo &info) {
 
 
 Napi::Value Group::GetPath(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+//    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
     Napi::Env env = info.Env();
     int id=this->id;
 	Group * pGroup = this;
-    (new NCAsyncWorker<NCGroup_result>(
+    auto worker=new NCAsyncWorker<NCGroup_result>(
 	    env,
-	    deferred,
 	    [id,pGroup] (const NCAsyncWorker<NCGroup_result>* worker) {
 		    static NCGroup_result result;
             result.id = id;
@@ -384,8 +383,9 @@ Napi::Value Group::GetPath(const Napi::CallbackInfo &info) {
 		    return Napi::String::New(env, result.name);
 	   	}
 	
-	))->Queue();
-    return deferred.Promise();
+	);
+	worker->Queue();
+    return worker->Deferred().Promise();
 }
 
 Napi::Value Group::Inspect(const Napi::CallbackInfo &info) {
