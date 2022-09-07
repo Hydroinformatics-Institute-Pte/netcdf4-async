@@ -109,28 +109,23 @@ describe("Group", function () {
 
   it("should add new dimension",async function() {
     await expect(file.root.getDimensions()).eventually.to.not.have.property("new_dim");
-    var newDim=await expect(file.root.addDimension("new_dim",10)).be.fulfilled;
-    expect(newDim.inspect(),"[Dimension new_dim,length 10");
-    await expect(file.root.getDimensions()).eventually.to.have.property("new_dim");
+    await expect(file.root.addDimension("new_dim",10)).eventually.to.be.deep.eq({"new_dim":10});
+    await expect(file.root.getDimensions()).eventually.to.have.property("new_dim").to.be.deep.eq(10);
     await file.close();
     file = await netcdf4.open(tempFileName, "r");
-    const dim=await expect(file.root.getDimensions()).eventually.to.have.property("new_dim");
-    expect(dim.inspect(),"[Dimension new_dim,length 10");
+    await expect(file.root.getDimensions()).eventually.to.have.property("new_dim").to.be.deep.eq(10);
   });
 
   it("should add new unlimited dimension",async function() {
     await expect(file.root.getDimensions()).eventually.to.not.have.property("new_dim");
     await expect(file.root.getDimensions(true)).eventually.to.not.have.property("new_dim");
-    var newDim=await expect(file.root.addDimension("new_dim",'unlimited')).be.fulfilled;
-    expect(newDim.inspect(),"[Dimension new_dim,length unlimited");
-    await expect(file.root.getDimensions()).eventually.to.have.property("new_dim");
-    await expect(file.root.getDimensions(true)).eventually.to.have.property("new_dim");
+    await expect(file.root.addDimension("new_dim",'unlimited')).eventually.to.be.deep.eq({"new_dim":"unlimited"});
+    await expect(file.root.getDimensions()).eventually.to.have.property("new_dim").to.be.deep.eq("unlimited");
+    await expect(file.root.getDimensions(true)).eventually.to.have.property("new_dim").to.be.deep.eq("unlimited");
     await file.close();
     file = await netcdf4.open(tempFileName, "r");
-    await expect(file.root.getDimensions()).eventually.to.have.property("new_dim");
-    await expect(file.root.getDimensions(true)).eventually.to.have.property("new_dim");
-    const dim=await expect(file.root.getDimensions()).eventually.to.have.property("new_dim");
-    expect(dim.inspect(),"[Dimension new_dim,length unlimited");
+    await expect(file.root.getDimensions()).eventually.to.have.property("new_dim").to.be.deep.eq("unlimited");
+    await expect(file.root.getDimensions(true)).eventually.to.have.property("new_dim").to.be.deep.eq("unlimited");
   });
 
   it("should read list of variables", async function () {

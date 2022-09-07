@@ -136,29 +136,46 @@ Napi::Value Group::AddSubgroup(const Napi::CallbackInfo &info) {
 
 Napi::Value Group::AddDimension(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-	// if (info.Length() != static_cast<size_t>(2)) {
-	// 	Napi::TypeError::New(info.Env(), "Wrong number of arguments. Need dimension name and length").ThrowAsJavaScriptException();
-	// 	return info.Env().Undefined();
-	// }
-	// int len;
-	// const std::string len_symbol=info[1].As<Napi::String>().ToString();
-	// if (len_symbol=="unlimited") {
-	// 	len=NC_UNLIMITED;
-	// }
-	// else {
-	// 	len=info[1].As<Napi::Number>().Int32Value();
-	// 	if (len<=0) {
-	// 		Napi::TypeError::New(info.Env(), "Expected positive integer as dimension length").ThrowAsJavaScriptException();
-	// 		return info.Env().Undefined();
-	// 	}
-	// }
-	// const std::string new_name = info[0].As<Napi::String>().ToString();
-	// int new_id;
-	// NC_CALL(nc_def_dim(id,new_name.c_str(),len,&new_id))
-	// Napi::Object dimension = Dimension::Build(info.Env(),id,new_id);
-	// return dimension;
-    return deferred.Promise(); 
+	Napi::Env env = info.Env();
+	if (info.Length() != static_cast<size_t>(2)) {
+	 	deferred.Reject(Napi::String::New(env, "Wrong number of arguments. Need dimension name and length"));
+	    return deferred.Promise();
+	}
+	int len;
+	const std::string len_symbol=info[1].As<Napi::String>().ToString();
+	if (len_symbol=="unlimited") {
+	 	len=NC_UNLIMITED;
+	}
+	else {
+	 	len=info[1].As<Napi::Number>().Int32Value();
+	 	if (len<=0) {
+			deferred.Reject(Napi::String::New(env, "Expected positive integer as dimension length"));
+			return deferred.Promise();
+	 	}
+	}
+	const std::string name = info[0].As<Napi::String>().ToString();
+	auto worker=new NCAsyncWorker<NCGroup_dims>(
+		env,
+		deferred,
+		[id=this->id,len,name] (const NCAsyncWorker<NCGroup_dims>* worker) {
+			NCGroup_dims result;
+			NC_CALL(nc_def_dim(id,name.c_str(),len,&result.id));
+			result.name=name;
+			result.len=len;
+			return result;
+		},
+		[] (Napi::Env env,NCGroup_dims result) {
+			Napi::Object dimension = Napi::Object::New(env);
+			auto len = result.len==NC_UNLIMITED?Napi::String::New(env,"unlimited"):Napi::Number::New(env,result.len);
+			dimension.Set(Napi::String::New(env,result.name), len);
+         	return dimension;
+		}
+
+	);
+	worker->Queue();
+
+	return worker->Deferred().Promise(); 
+
 }
 
 Napi::Value Group::AddVariable(const Napi::CallbackInfo &info) {
@@ -238,9 +255,6 @@ Napi::Value Group::GetDimensions(const Napi::CallbackInfo &info) {
 	if (info.Length() >= static_cast<size_t>(1)) {
 		unlimited=info[0].As<Napi::Boolean>().Value();
 	}
-//    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-//    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-//	int id = this->id;
 	auto worker=new NCAsyncWorker<NCGroup_list<NCGroup_dims>>(
 		env,
 		[id=this->id,unlimited] (const NCAsyncWorker<NCGroup_list<NCGroup_dims>>* worker) {
