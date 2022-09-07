@@ -221,7 +221,7 @@ From original documentation:
                 "attribute_n":value_n
             }
             ```
-            * `asDefined`===false or not set
+            * `asDefined`===true or not set
             ```json
             {
                 "attribute_1":{
