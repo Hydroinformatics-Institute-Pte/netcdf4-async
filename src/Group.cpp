@@ -34,12 +34,6 @@ struct NCGroup_dims
 }; 
 
 
-struct Array_NCGroup_result 
-{
-	int ngrps;
-	NCGroup_result* array_NCGroup;
-};   
-
 Napi::FunctionReference Group::constructor;
 
 Napi::Object Group::Build(Napi::Env env, int id,std::string name) {
@@ -308,20 +302,36 @@ Napi::Value Group::GetDimensions(const Napi::CallbackInfo &info) {
 
 
 Napi::Value Group::GetAttributes(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-	// int natts;
-	// NC_CALL(nc_inq_natts(this->id, &natts));
+	Napi::Env env = info.Env();
+	int id = this->id;
+    auto worker = new NCAsyncWorker<NCGroup_list<NCGroup_result>>(
+		env,
+		[id] (const NCAsyncWorker<NCGroup_list<NCGroup_result>>* worker) {
+			int natts;
+			NC_CALL(nc_inq_natts(id, &natts));
+			char name[NC_MAX_NAME + 1];
+			NCGroup_list<NCGroup_result> result;
+			for (int i = 0; i < natts; ++i) {
+				NC_CALL(nc_inq_attname(id, NC_GLOBAL, i, name));
+				NCGroup_result attribute;
+				attribute.id = i;
+				attribute.name = name;
+				result.groups.push_back(attribute);
+			}
+            return result;
+		},
+		[] (Napi::Env env, NCGroup_list<NCGroup_result> result) {
+			Napi::Object attributes = Napi::Object::New(env);
+			for (auto nc_attribute= result.groups.begin(); nc_attribute != result.groups.end(); nc_attribute++){
+				attributes.Set(Napi::String::New(env, nc_attribute->name), Napi::Number::New(env, nc_attribute->id));
+			}
+			return attributes;
+		}
+		
+	);
+	worker->Queue();
 
-	// Napi::Object attrs = Napi::Object::New(info.Env());
-	// char name[NC_MAX_NAME + 1];
-	// for (int i = 0; i < natts; ++i) {
-	// 	NC_CALL(nc_inq_attname(this->id, NC_GLOBAL, i, name));
-	// 	Napi::Object attr = Attribute::Build(info.Env(), name, NC_GLOBAL, this->id);
-	// 	attrs.Set(name, attr);
-	// }
-	// return attrs;
-    return deferred.Promise();
+    return worker->Deferred().Promise();
 }
 
 Napi::Value Group::GetSubgroups(const Napi::CallbackInfo &info) {
