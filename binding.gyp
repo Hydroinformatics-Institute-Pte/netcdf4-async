@@ -20,6 +20,7 @@
                 "src/netcdf4-async.cpp",
                 "src/async.cpp",
                 "src/File.cpp",
+                "src/Attribute.cpp",
                 "src/Group.cpp"
             ],
             "target_name": "netcdf4-async",
