@@ -183,15 +183,25 @@ describe("Group", function () {
     await expect(file.root.getAttributes()).eventually.to.not.have.property("root_attr_prop");
     const attr=await expect(file.root.addAttribute("root_attr_prop","string","root attr property")).to.be.fulfilled;
     expect(attr).deep.equal({"root_attr_prop":{"type":"string","value":"root attr property"}});
-    expect(file.root.attributes).eventually.to.have.property("root_attr_prop");
+    expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
     await file.close();
     file = await netcdf4.open(tempFileName, "r");
     await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
-    await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop").to.deep.equal("root attr property");
+    await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop").to.deep.property("value").to.deep.equal("root attr property");
     await expect(file.root.getAttributes(true)).eventually.to.have.property("root_attr_prop").to.deep.equal({"type":"string","value":"root attr property"});
   })  
 
-
+  // it("should add attribute",async function() {
+  //   await expect(file.root.getAttributes()).eventually.to.not.have.property("root_attr_prop");
+  //   const attr = await expect(file.root.addAttribute("root_attr_prop","string","root attr property")).to.be.fulfilled;
+  //   console.log(attr);
+  //   await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
+  //   await file.close();
+  //   file = await netcdf4.open(tempFileName, "r");
+  //   await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
+  //   await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop").to.deep.property("value").to.deep.equal("root attr property");
+  //   await expect(file.root.getAttributes(true)).eventually.to.have.property("root_attr_prop").to.deep.equal({"type":"string","value":"root attr property"});
+  // })  
 
 
 });

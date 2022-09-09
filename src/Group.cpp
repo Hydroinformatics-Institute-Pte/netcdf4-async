@@ -88,17 +88,16 @@ void Group::Init(Napi::Env env) {
 
 Napi::Value Group::AddAttribute(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-	// if (info.Length() != static_cast<size_t>(3)) {
-	// 	Napi::TypeError::New(info.Env(), "Not all parameters from name,type,value bound").ThrowAsJavaScriptException();
-	// 	return info.Env().Undefined();
-	// }
-	// std::string type_str=info[1].As<Napi::String>().ToString();
-	// int type=get_type(type_str);
-	// std::string name=info[0].As<Napi::String>().ToString();
-	// Attribute::set_value(info,this->id,NC_GLOBAL,name,type,info[2]);
-	// return Attribute::Build(info.Env(),name,NC_GLOBAL,this->id,type);
-    return deferred.Promise();
+	if (info.Length() != static_cast<size_t>(3)) {
+		deferred.Reject(Napi::String::New(info.Env(),"Not all parameters from name,type,value bound"));
+		return deferred.Promise();
+	}
+	std::string type_str=info[1].As<Napi::String>().ToString();
+	int type=get_type(type_str);
+	std::string name=info[0].As<Napi::String>().ToString();
+	Napi::Env env = info.Env();
+	int id = this->id;
+	return add_attribute(deferred ,env, id, NC_GLOBAL, name, type, info[2]).Promise();
 }
 
 Napi::Value Group::AddSubgroup(const Napi::CallbackInfo &info) {
@@ -308,7 +307,7 @@ Napi::Value Group::GetAttributes(const Napi::CallbackInfo &info) {
 	}
 	Napi::Env env = info.Env();
 	int id = this->id;
- 	return netcdf4async::Attribute::get_attributes(env, id, NC_GLOBAL, return_type).Promise();
+ 	return netcdf4async::get_attributes(env, id, NC_GLOBAL, return_type).Promise();
 }
 
 Napi::Value Group::GetSubgroups(const Napi::CallbackInfo &info) {
