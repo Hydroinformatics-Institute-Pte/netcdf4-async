@@ -554,4 +554,44 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 	worker->Queue();
 	return worker->Deferred();
 	}
+
+
+Napi::Promise::Deferred delete_attribute(Napi::Env env, int parent_id, int var_id, std::string name) {
+	auto worker = new NCAsyncWorker<std::string>(
+		env,
+		[parent_id, var_id, name] (const NCAsyncWorker<std::string>* worker) {
+			
+			NC_CALL(nc_del_att(parent_id, var_id, name.c_str()));
+			
+            return name;
+		},
+		[] (Napi::Env env, std::string result) {
+			return Napi::String::New(env, result);
+		}
+		
+	);
+	worker->Queue();
+	return worker->Deferred();
+}
+
+
+Napi::Promise::Deferred rename_attribute(Napi::Env env, int parent_id, int var_id, std::string old_name, std::string new_name) {
+
+	auto worker = new NCAsyncWorker<std::string>(
+		env,
+		[parent_id, var_id, old_name, new_name] (const NCAsyncWorker<std::string>* worker) {
+			
+			NC_CALL(nc_rename_att(parent_id, var_id, old_name.c_str(), new_name.c_str()));
+			
+            return new_name;
+		},
+		[] (Napi::Env env, std::string result) {
+			return Napi::String::New(env, result);
+		}
+		
+	);
+	worker->Queue();
+	return worker->Deferred();
+}
+
 }
