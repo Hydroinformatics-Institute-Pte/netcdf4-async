@@ -215,7 +215,7 @@ describe("Group", function () {
   
   const testAddAttr=(fileType,type,value)=>{
 
-    it(`${fileType} should add attribute type ${type}`,async function() {
+    it(`[${fileType}] should add attribute type ${type}`,async function() {
       let file=await newFile(fileType==='hdf5'?fixture1:fixture);
       await expect(file.root.getAttributes()).eventually.to.not.have.property("root_attr_prop");
       const attr=await expect(file.root.addAttribute("root_attr_prop",type,value)).to.be.fulfilled;
