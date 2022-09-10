@@ -249,7 +249,7 @@ describe("Group", function () {
   testSuiteOld
   .forEach(v=>testAddAttr('hdf5',v[0],arrTypes[v[0]][1](v[1])));
   testSuiteOld
-  .filter(v=>['ubyte','ushort','uint','string','int64','uint64'].indexOf(v[0])===-1)
+  .filter(v=>['ubyte','ushort','uint','int64','uint64'].indexOf(v[0])===-1)
   .forEach(v=>testAddAttr('netcdf3',v[0],arrTypes[v[0]][1](v[1])));
 
 
