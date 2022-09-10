@@ -4,42 +4,19 @@ const chaiAsPromised = require('chai-as-promised');
 chai.use(chaiAsPromised);
 
 const netcdf4 = require("..");
-const { copyFileSync, unlinkSync } = require("fs");
-const { tmpdir } = require("os");
 const { join } = require("path");
-const uniqueFilename = require('unique-filename');
 
 const fixture = join(__dirname, "test_hgroups.nc");
 const fixture1 = join(__dirname, "testrh.nc");
 
+const {newFile,closeAll,arrTypes}=require("./utils");
+
 describe("Group", function () {
   let file;
-  let files=[];
 
-  const newFile=async (name=fixture,mode='w')=>{
-    const tempFileName = uniqueFilename(tmpdir(), `orc`);
-    copyFileSync(fixture, tempFileName);
-    const file=await netcdf4.open(tempFileName, mode);
-    files.push(file);
-    return file;
-  };
-
-  const closeAll=async ()=>{
-    for (const f of files) {
-      try{
-        if (!f.closed) {
-          await f.close();
-        }
-        unlinkSync(f.name);          
-      } catch (e) {
-        console.log(`Exception ${e.message} due file ${file.name} closing`);
-      }
-    };
-    files=[];
-  };
 
   beforeEach(async function () {
-    file = await newFile();
+    file = await newFile(fixture);
   });
 
   afterEach(async function () {
@@ -197,21 +174,6 @@ describe("Group", function () {
     expect(attributes).to.have.property("time_arr");
   });
 
-  const arrTypes={
-    "byte":[Int8Array,Number],
-    "short":[Int16Array,Number],
-    "int":[Int32Array,Number],
-    "float":[Float32Array,Number],
-    "double":[Float64Array,Number],
-    "ubyte":[Uint8Array,Number],
-    "ushort":[Uint16Array,Number],
-    "uint":[Uint32Array,Number],
-    "string":[Array.from,String]
-  };
-  if (process.versions.node.split(".")[0]>=10) {
-    arrTypes["uint64"]=[BigUint64Array,BigInt];
-    arrTypes["int64"]=[BigInt64Array,BigInt];
-  };
   
   const testAddAttr=(fileType,type,value)=>{
 
