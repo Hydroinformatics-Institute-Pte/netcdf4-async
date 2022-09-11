@@ -4,6 +4,28 @@
 #include <napi.h>
 #include <string>
 
+#define ATTR_TO_VAL(v,type,construct,array)                \
+        if (nc_attribute->len == 1) {                      \
+            value = Napi::construct::New(                  \
+                env,                                       \
+                nc_attribute->value.v[0]                   \
+            );                                             \
+        }                                                  \
+        else {                                             \
+            value = Napi::array::New(                      \
+                env,                                       \
+                sizeof(type),                              \
+                Napi::ArrayBuffer::New(                    \
+                    env,                                   \
+                    nc_attribute->value.v,                 \
+                    nc_attribute->len * sizeof(int16_t)    \
+                ),                                         \
+                0,                                         \
+                napi_int8_array                            \
+            );                                             \
+        }                                                  \
+        delete[] nc_attribute->value.v;
+
 namespace netcdf4async {
 
 Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred, Napi::Env env, int parent_id, int var_id,

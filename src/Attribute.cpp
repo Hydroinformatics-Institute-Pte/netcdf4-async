@@ -7,35 +7,99 @@
 #include "utils.h"
 
 namespace netcdf4async {
+union UnionType{
+	int8_t* i8;
+	int16_t* i16;
+	int32_t* i32;
+	float* f;
+	double* d;
+	uint8_t* u8;
+	uint16_t* u16;
+	uint32_t* u32;
+	uint64_t* u64;
+	int64_t* i64;
+	char* s;
+	char** ps;
+	const char* text;
+	void* v;
+};
 struct attr_struct
 {
 	std::string name;
 	int type;
 	size_t len;
-	union UnionType{
-		int8_t* i8;
-		int16_t* i16;
-		int32_t* i32;
-		float* f;
-		double* d;
-		uint8_t* u8;
-		uint16_t* u16;
-		uint32_t* u32;
-		uint64_t* u64;
-		int64_t* i64;
-		char* s;
-		char** ps;
-		const char* text;
-		void* v;
-	};
 	UnionType value;
 };
+
 
 
 struct NCAttribute_list
 {
 	std::vector<attr_struct> attributes;
 };
+
+Napi::Value attr2value(Napi::Env env,attr_struct *nc_attribute) {
+	Napi::Value value;
+	printf("Attr %s type %i\n",nc_attribute->name.c_str(),nc_attribute->type);
+	switch (nc_attribute->type) {
+		case NC_BYTE:
+			printf("Value byte %i\n",nc_attribute->value.i8[0]);
+			ATTR_TO_VAL(i8,int8_t,Number,Int8Array);
+		break;
+		case NC_SHORT:
+			printf("Value short %i\n",nc_attribute->value.i16[0]);
+			ATTR_TO_VAL(i16,int16_t,Number,Int16Array);
+		break;
+		case NC_INT:
+			printf("Value int %i\n",nc_attribute->value.i32[0]);
+			ATTR_TO_VAL(i32,int32_t,Number,Int32Array);
+		break;
+		case NC_FLOAT:
+			printf("Value float %f\n",nc_attribute->value.f[0]);
+			ATTR_TO_VAL(f,float,Number,Float32Array);
+		break;
+		case NC_DOUBLE:
+			ATTR_TO_VAL(f,double,Number,Float64Array);
+		break;
+		case NC_UBYTE:
+			ATTR_TO_VAL(u8,uint8_t,Number,Uint8Array);
+		break;
+		case NC_USHORT:
+			ATTR_TO_VAL(u16,uint16_t,Number,Uint16Array);
+		break;
+		case NC_UINT:
+			ATTR_TO_VAL(u32,uint32_t,Number,Uint32Array);
+		break;
+		case NC_UINT64:
+			ATTR_TO_VAL(u64,uint64_t,BigInt,BigUint64Array);
+		break;
+		case NC_INT64:
+			ATTR_TO_VAL(i64,int64_t,BigInt,BigInt64Array);
+		break;
+		case NC_CHAR: 
+			value = Napi::String::New(env, nc_attribute->value.s);
+			delete[] nc_attribute->value.s;
+		break;
+		case NC_STRING:
+			if (nc_attribute->len == 1) {
+				value = Napi::String::New(env, nc_attribute->value.ps[0]);
+			}
+			else {
+				Napi::Array result_array = Napi::Array::New(env, nc_attribute->len);
+				for (int i = 0; i < static_cast<int>(nc_attribute->len); i++){
+					std::string *res_str=new std::string(nc_attribute->value.ps[i]);
+					result_array[i] = Napi::String::New(env, res_str->c_str());
+					delete res_str;
+				}
+				value = result_array;
+			}
+			NC_VOID_CALL(nc_free_string(nc_attribute->len,nc_attribute->value.ps));
+			delete[] nc_attribute->value.ps;
+		break;
+	}	
+	return value;
+};
+
 
 Napi::Promise::Deferred get_attributes(Napi::Env env, int parent_id, int var_id, bool return_type) {
     auto worker = new NCAsyncWorker<NCAttribute_list>(
@@ -63,60 +127,49 @@ Napi::Promise::Deferred get_attributes(Napi::Env env, int parent_id, int var_id,
 				attribute.type = type;
 				
 				switch (type) {
-				case NC_BYTE: {
+				case NC_BYTE: 
 					attribute.value.i8 = new int8_t[len];
-					NC_CALL(nc_get_att(parent_id, var_id, name, attribute.value.i8));
-				} break;
-				case NC_SHORT: {
+				break;
+				case NC_SHORT: 
 					attribute.value.i16 = new int16_t[len];
-					NC_CALL(nc_get_att(parent_id, var_id, name, attribute.value.i16));
-				} break;
-				case NC_INT: {
+				break;
+				case NC_INT: 
 					attribute.value.i32 = new int32_t[len];
-					NC_CALL(nc_get_att(parent_id, var_id, name, attribute.value.i32));
-				} break;
-				case NC_FLOAT: {
+				break;
+				case NC_FLOAT: 
 					attribute.value.f = new float[len];
-					NC_CALL(nc_get_att(parent_id, var_id, name,attribute.value.f));
-				} break;
-				case NC_DOUBLE: {
+				break;
+				case NC_DOUBLE: 
 					attribute.value.d = new double[len];
-					NC_CALL(nc_get_att(parent_id, var_id, name, attribute.value.d));
-				} break;
-				case NC_UBYTE: {
+				break;
+				case NC_UBYTE: 
 					attribute.value.u8 = new uint8_t[len];
-					NC_CALL(nc_get_att(parent_id, var_id, name, attribute.value.u8));
-				} break;
-				case NC_USHORT: {
+				break;
+				case NC_USHORT: 
 					attribute.value.u16 = new uint16_t[len];
-					NC_CALL(nc_get_att(parent_id, var_id, name, attribute.value.u16));
-				} break;
-				case NC_UINT: {
+				break;
+				case NC_UINT: 
 					attribute.value.u32 = new uint32_t[len];
-					NC_CALL(nc_get_att(parent_id, var_id, name, attribute.value.u32));
-				} break;
+				break;
 #if NODE_MAJOR_VERSION > 8
-				case NC_UINT64: {
+				case NC_UINT64: 
 					attribute.value.u64 = new uint64_t[len];
-					NC_CALL(nc_get_att(parent_id, var_id, name,attribute.value.u64));
-				} break;
-				case NC_INT64: {
+				break;
+				case NC_INT64:
 					attribute.value.i64 = new int64_t[len];
-					NC_CALL(nc_get_att(parent_id, var_id, name,attribute.value.i64));
-				} break;
+				break;
 #endif
-				case NC_CHAR: {
+				case NC_CHAR: 
 					attribute.value.s = new char[len + 1];
 					attribute.value.s[len] = 0;
-					NC_CALL(nc_get_att_text(parent_id, var_id, name, attribute.value.s));
-				} break;
-				case NC_STRING: {
+				break;
+				case NC_STRING: 
 					attribute.value.ps = new char*[len];
-        			NC_CALL(nc_get_att_string(parent_id, var_id, name, attribute.value.ps));
-				} break;
+				break;
 				default:
 					throw std::runtime_error("Variable type not supported yet");
 				}
+				NC_CALL(nc_get_att(parent_id, var_id, name, attribute.value.v));
 
 				result.attributes.push_back(attribute);
 			}
@@ -126,102 +179,66 @@ Napi::Promise::Deferred get_attributes(Napi::Env env, int parent_id, int var_id,
 			
 			Napi::Object attributes = Napi::Object::New(env);
 			for (auto nc_attribute= result.attributes.begin(); nc_attribute != result.attributes.end(); nc_attribute++){
-				Napi::Value value;
-				if(nc_attribute->len == 1){
-					switch (nc_attribute->type) {
-					case NC_BYTE:{
-						value = Napi::Number::New(env, nc_attribute->value.i8[0]);
-					} break;
-					case NC_SHORT:{
-						value = Napi::Number::New(env, nc_attribute->value.i16[0]);
-					} break;
-					case NC_INT:{
-						value = Napi::Number::New(env, nc_attribute->value.i32[0]);
-					} break;
-					case NC_FLOAT:{
-						value = Napi::Number::New(env, nc_attribute->value.f[0]);
-					} break;
-					case NC_DOUBLE:{
-						value = Napi::Number::New(env, nc_attribute->value.d[0]);						
-					} break;
-					case NC_UBYTE:{
-						value = Napi::Number::New(env, nc_attribute->value.u8[0]);
-					} break;
-					case NC_USHORT:{
-						value = Napi::Number::New(env, nc_attribute->value.u16[0]);
-					} break;
-					case NC_UINT:{
-						value = Napi::Number::New(env, nc_attribute->value.u32[0]);
-					} break;
-					case NC_UINT64:{
-						value = Napi::BigInt::New(env, nc_attribute->value.u64[0]);
-					} break;
-					case NC_INT64:{
-						value = Napi::BigInt::New(env, nc_attribute->value.i64[0]);						
-					} break;
-					case NC_CHAR: {
+				Napi::Value value=attr2value(env,&*nc_attribute);
+/*				
+				printf("Attr %s type %i\n",nc_attribute->name.c_str(),nc_attribute->type);
+				switch (nc_attribute->type) {
+					case NC_BYTE:
+						printf("Value byte %i\n",nc_attribute->value.i8[0]);
+						ATTR_TO_VAL(i8,int8_t,Number,Int8Array);
+					break;
+					case NC_SHORT:
+						printf("Value short %i\n",nc_attribute->value.i16[0]);
+						ATTR_TO_VAL(i16,int16_t,Number,Int16Array);
+					break;
+					case NC_INT:
+						printf("Value int %i\n",nc_attribute->value.i32[0]);
+						ATTR_TO_VAL(i32,int32_t,Number,Int32Array);
+					break;
+					case NC_FLOAT:
+						printf("Value float %f\n",nc_attribute->value.f[0]);
+						ATTR_TO_VAL(f,float,Number,Float32Array);
+					break;
+					case NC_DOUBLE:
+						ATTR_TO_VAL(f,double,Number,Float64Array);
+					break;
+					case NC_UBYTE:
+						ATTR_TO_VAL(u8,uint8_t,Number,Uint8Array);
+					break;
+					case NC_USHORT:
+						ATTR_TO_VAL(u16,uint16_t,Number,Uint16Array);
+					break;
+					case NC_UINT:
+						ATTR_TO_VAL(u32,uint32_t,Number,Uint32Array);
+					break;
+					case NC_UINT64:
+						ATTR_TO_VAL(u64,uint64_t,BigInt,BigUint64Array);
+					break;
+					case NC_INT64:
+						ATTR_TO_VAL(i64,int64_t,BigInt,BigInt64Array);
+					break;
+					case NC_CHAR: 
 						value = Napi::String::New(env, nc_attribute->value.s);
-					} break;
-					case NC_STRING:{
-						value = Napi::String::New(env, nc_attribute->value.ps[0]);
-					} break;
-					}	
-				} else {
-					switch (nc_attribute->type) {
-					case NC_BYTE:{
-						value = Napi::Int8Array::New(env, sizeof(int8_t),
-							Napi::ArrayBuffer::New(env, nc_attribute->value.i8, nc_attribute->len * sizeof(int8_t)), 0, napi_int8_array);
-					} break;
-					case NC_SHORT:{
-						value = Napi::Int16Array::New(env, sizeof(int16_t),
-							Napi::ArrayBuffer::New(env, nc_attribute->value.i16, nc_attribute->len * sizeof(int16_t)), 0, napi_int8_array);
-					} break;
-					case NC_INT:{
-						value = Napi::Int32Array::New(env, sizeof(int32_t),
-							Napi::ArrayBuffer::New(env, nc_attribute->value.i32, nc_attribute->len * sizeof(int32_t)), 0, napi_int8_array);
-					} break;
-					case NC_FLOAT:{
-						value = Napi::Float32Array::New(env, sizeof(float),
-							Napi::ArrayBuffer::New(env, nc_attribute->value.f, nc_attribute->len * sizeof(float)), 0, napi_int8_array);
-					} break;
-					case NC_DOUBLE:{
-						value = Napi::Float64Array::New(env, sizeof(double),
-							Napi::ArrayBuffer::New(env, nc_attribute->value.d, nc_attribute->len * sizeof(double)), 0, napi_int8_array);						
-					} break;
-					case NC_UBYTE:{
-						value = Napi::Uint8Array::New(env, sizeof(uint8_t),
-							Napi::ArrayBuffer::New(env, nc_attribute->value.u8, nc_attribute->len * sizeof(uint8_t)), 0, napi_int8_array);	
-					} break;
-					case NC_USHORT:{
-						value = Napi::Uint16Array::New(env, sizeof(uint16_t),
-							Napi::ArrayBuffer::New(env, nc_attribute->value.u16, nc_attribute->len * sizeof(uint16_t)), 0, napi_int8_array);
-					} break;
-					case NC_UINT:{
-						value = Napi::Uint32Array::New(env, sizeof(uint32_t),
-							Napi::ArrayBuffer::New(env, nc_attribute->value.u32, nc_attribute->len * sizeof(uint32_t)), 0, napi_int8_array);
-					} break;
-					case NC_UINT64:{
-						value = Napi::BigUint64Array::New(env, sizeof(uint64_t),
-							Napi::ArrayBuffer::New(env, nc_attribute->value.u64, nc_attribute->len * sizeof(uint64_t)), 0, napi_int8_array);
-					} break;
-					case NC_INT64:{
-						value = Napi::BigInt64Array::New(env, sizeof(int64_t),
-							Napi::ArrayBuffer::New(env, nc_attribute->value.u64, nc_attribute->len * sizeof(int64_t)), 0, napi_int8_array);					
-					} break;
-					case NC_CHAR: {
-						value = Napi::String::New(env, nc_attribute->value.s);
-					} break;
-					case NC_STRING:{
-						Napi::Array result_array = Napi::Array::New(env, nc_attribute->len);
-        				for (int i = 0; i < static_cast<int>(nc_attribute->len); i++){
-							std::string *res_str=new std::string(nc_attribute->value.ps[i]);
-           					result_array[i] = Napi::String::New(env, res_str->c_str());
-							delete res_str;
-        				}
-						value = result_array;
-					} break;
-					}
-				}
+						delete[] nc_attribute->value.s;
+					break;
+					case NC_STRING:
+						if (nc_attribute->len == 1) {
+							value = Napi::String::New(env, nc_attribute->value.ps[0]);
+						}
+						else {
+							Napi::Array result_array = Napi::Array::New(env, nc_attribute->len);
+							for (int i = 0; i < static_cast<int>(nc_attribute->len); i++){
+								std::string *res_str=new std::string(nc_attribute->value.ps[i]);
+								result_array[i] = Napi::String::New(env, res_str->c_str());
+								delete res_str;
+							}
+							value = result_array;
+						}
+						NC_VOID_CALL(nc_free_string(nc_attribute->len,nc_attribute->value.ps));
+						delete[] nc_attribute->value.ps;
+					break;
+				}	
+*/
 				if(return_type){
 					Napi::Object types_value = Napi::Object::New(env);
 					types_value.Set(Napi::String::New(env, "type"),Napi::String::New(env, get_type_string(nc_attribute->type)) );
@@ -472,77 +489,9 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 			return result;
 		},
 		[] (Napi::Env env, attr_struct result) {
-			Napi::Value value;
-			if(result.len == 1){
-				switch (result.type) {
-				case NC_BYTE:
-				case NC_SHORT:
-				case NC_INT:
-				case NC_FLOAT:
-				case NC_DOUBLE:
-				case NC_UBYTE:
-				case NC_USHORT:
-				case NC_UINT:{
-					value = Napi::Number::New(env, *static_cast<double*>(result.value.v));
-				} break;
-				case NC_UINT64:
-				case NC_INT64:{
-					value = Napi::BigInt::New(env, *static_cast<int64_t*>(result.value.v));						
-				} break;
-				case NC_CHAR:
-				case NC_STRING:{
-					 value = Napi::String::New(env, result.value.s);
-				} break;
-				}	
-			} else {
-				switch (result.type) {
-				case NC_BYTE:{
-					value = Napi::Int8Array::New(env, sizeof(int8_t),
-						Napi::ArrayBuffer::New(env, result.value.v, result.len * sizeof(int8_t)), 0, napi_int8_array);
-				} break;
-				case NC_SHORT:{
-					value = Napi::Int16Array::New(env, sizeof(int16_t),
-						Napi::ArrayBuffer::New(env, result.value.v, result.len * sizeof(int16_t)), 0, napi_int8_array);
-				} break;
-				case NC_INT:{
-					value = Napi::Int32Array::New(env, sizeof(int32_t),
-						Napi::ArrayBuffer::New(env, result.value.v, result.len * sizeof(int32_t)), 0, napi_int8_array);
-				} break;
-				case NC_FLOAT:{
-					value = Napi::Float32Array::New(env, sizeof(float),
-						Napi::ArrayBuffer::New(env, result.value.v, result.len * sizeof(float)), 0, napi_int8_array);
-				} break;
-				case NC_DOUBLE:{
-					value = Napi::Float64Array::New(env, sizeof(double),
-						Napi::ArrayBuffer::New(env, result.value.v, result.len * sizeof(double)), 0, napi_int8_array);						
-				} break;
-				case NC_UBYTE:{
-					value = Napi::Uint8Array::New(env, sizeof(uint8_t),
-						Napi::ArrayBuffer::New(env, result.value.v, result.len * sizeof(uint8_t)), 0, napi_int8_array);	
-				} break;
-				case NC_USHORT:{
-					value = Napi::Uint16Array::New(env, sizeof(uint16_t),
-						Napi::ArrayBuffer::New(env, result.value.v, result.len * sizeof(uint16_t)), 0, napi_int8_array);
-				} break;
-				case NC_UINT:{
-					value = Napi::Uint32Array::New(env, sizeof(uint32_t),
-						Napi::ArrayBuffer::New(env, result.value.v, result.len * sizeof(uint32_t)), 0, napi_int8_array);
-				} break;
-				case NC_UINT64:{
-					value = Napi::BigUint64Array::New(env, sizeof(uint64_t),
-						Napi::ArrayBuffer::New(env, result.value.v, result.len * sizeof(uint64_t)), 0, napi_int8_array);
-				} break;
-				case NC_INT64:{
-					value = Napi::BigInt64Array::New(env, sizeof(int64_t),
-						Napi::ArrayBuffer::New(env, result.value.v, result.len * sizeof(int64_t)), 0, napi_int8_array);					
-				} break;
-				case NC_CHAR:
-				case NC_STRING:{
-					value = Napi::String::New(env, result.value.s);
-				} break;
-				}
-
-			}
+			printf("Get value %s\n",result.name.c_str());
+			Napi::Value value=attr2value(env,&result);
+			
 			Napi::Object types_value = Napi::Object::New(env);
 			types_value.Set(Napi::String::New(env, "type"),Napi::String::New(env, get_type_string(result.type)) );
 			types_value.Set(Napi::String::New(env, "value"), value);

@@ -30,6 +30,7 @@ namespace netcdf4async {
      * @param error Error
      */
     void AsyncPromiseWorker::OnError(Napi::Error const &error) {
+        printf("OnError %s\n",error.Value().ToString().Utf8Value().c_str());
         auto deferred=Deferred();
         deferred.Reject(error.Value());
     }

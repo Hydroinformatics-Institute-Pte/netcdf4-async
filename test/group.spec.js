@@ -162,6 +162,7 @@ describe("Group", function () {
       await expect(
         file.root.getSubgroup("mozaic_flight_2012030419144751_ascent").then(group=>group.getAttributes()))
         .to.be.fulfilled;
+    console.log(attributes);
     expect(attributes).to.have.property("airport_dep");
     expect(attributes).to.have.property("flight");
     expect(attributes).to.have.property("level");
@@ -178,9 +179,13 @@ describe("Group", function () {
   const testAddAttr=(fileType,type,value)=>{
 
     it(`[${fileType}] should add attribute type ${type}`,async function() {
-      let file=await newFile(fileType==='hdf5'?fixture1:fixture);
+      let file=await newFile(fileType==='hdf5'?fixture:fixture1,fileType==='hdf5'?"w":"c");
+      if (fileType==='netcdf3') {
+        await file.dataMode();
+      }
       await expect(file.root.getAttributes()).eventually.to.not.have.property("root_attr_prop");
       const attr=await expect(file.root.addAttribute("root_attr_prop",type,value)).to.be.fulfilled;
+      console.log(attr);
       expect(attr).deep.equal({"root_attr_prop":{"type":type,"value":value}});
       expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
       await file.close();
@@ -211,7 +216,7 @@ describe("Group", function () {
   testSuiteOld
   .forEach(v=>testAddAttr('hdf5',v[0],arrTypes[v[0]][1](v[1])));
   testSuiteOld
-  .filter(v=>['ubyte','ushort','uint','int64','uint64'].indexOf(v[0])===-1)
+  .filter(v=>['ubyte','ushort','uint','int64','uint64','string'].indexOf(v[0])===-1)
   .forEach(v=>testAddAttr('netcdf3',v[0],arrTypes[v[0]][1](v[1])));
 
 

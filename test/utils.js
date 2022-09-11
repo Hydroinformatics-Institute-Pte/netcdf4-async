@@ -8,7 +8,9 @@ let files=[];
 
 const newFile=async (name,mode='w')=>{
     const tempFileName = uniqueFilename(tmpdir(), `nc`);
-    copyFileSync(name, tempFileName);
+    if (mode[0]!=='c') {
+        copyFileSync(name, tempFileName);
+    }
     const file=await netcdf4.open(tempFileName, mode);
     files.push(file);
     return file;
