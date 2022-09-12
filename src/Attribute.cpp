@@ -40,26 +40,27 @@ struct NCAttribute_list
 
 Napi::Value attr2value(Napi::Env env,attr_struct *nc_attribute) {
 	Napi::Value value;
-	printf("Attr %s type %i\n",nc_attribute->name.c_str(),nc_attribute->type);
+	// printf("Attr %s type %i\n",nc_attribute->name.c_str(),nc_attribute->type);
 	switch (nc_attribute->type) {
 		case NC_BYTE:
-			printf("Value byte %i\n",nc_attribute->value.i8[0]);
+			// printf("Value byte %i\n",nc_attribute->value.i8[0]);
 			ATTR_TO_VAL(i8,int8_t,Number,Int8Array);
 		break;
 		case NC_SHORT:
-			printf("Value short %i\n",nc_attribute->value.i16[0]);
+			// printf("Value short %i\n",nc_attribute->value.i16[0]);
 			ATTR_TO_VAL(i16,int16_t,Number,Int16Array);
 		break;
 		case NC_INT:
-			printf("Value int %i\n",nc_attribute->value.i32[0]);
+			// printf("Value int %i\n",nc_attribute->value.i32[0]);
 			ATTR_TO_VAL(i32,int32_t,Number,Int32Array);
 		break;
 		case NC_FLOAT:
-			printf("Value float %f\n",nc_attribute->value.f[0]);
+			// printf("Value float %f\n",nc_attribute->value.f[0]);
 			ATTR_TO_VAL(f,float,Number,Float32Array);
 		break;
 		case NC_DOUBLE:
-			ATTR_TO_VAL(f,double,Number,Float64Array);
+			// printf("Value double %lf\n",nc_attribute->value.d[0]);
+			ATTR_TO_VAL(d,double,Number,Float64Array);
 		break;
 		case NC_UBYTE:
 			ATTR_TO_VAL(u8,uint8_t,Number,Uint8Array);
@@ -82,7 +83,12 @@ Napi::Value attr2value(Napi::Env env,attr_struct *nc_attribute) {
 		break;
 		case NC_STRING:
 			if (nc_attribute->len == 1) {
-				value = Napi::String::New(env, nc_attribute->value.ps[0]);
+				printf("string = %s\n", nc_attribute->value.s);
+				std::string s = std::string(nc_attribute->value.s);
+				printf("string = %s\n", nc_attribute->value.s);
+				value = Napi::String::New(env, s.c_str());
+				//NC_VOID_CALL(nc_free_string(nc_attribute->len,&nc_attribute->value.s));
+				//delete[] nc_attribute->value.s;
 			}
 			else {
 				Napi::Array result_array = Napi::Array::New(env, nc_attribute->len);
@@ -92,13 +98,13 @@ Napi::Value attr2value(Napi::Env env,attr_struct *nc_attribute) {
 					delete res_str;
 				}
 				value = result_array;
+				NC_VOID_CALL(nc_free_string(nc_attribute->len,nc_attribute->value.ps));
+				delete[] nc_attribute->value.ps;
 			}
-			NC_VOID_CALL(nc_free_string(nc_attribute->len,nc_attribute->value.ps));
-			delete[] nc_attribute->value.ps;
 		break;
 	}	
 	return value;
-};
+}
 
 
 Napi::Promise::Deferred get_attributes(Napi::Env env, int parent_id, int var_id, bool return_type) {
@@ -139,7 +145,7 @@ Napi::Promise::Deferred get_attributes(Napi::Env env, int parent_id, int var_id,
 				case NC_FLOAT: 
 					attribute.value.f = new float[len];
 				break;
-				case NC_DOUBLE: 
+				case NC_DOUBLE:
 					attribute.value.d = new double[len];
 				break;
 				case NC_UBYTE: 
@@ -170,7 +176,7 @@ Napi::Promise::Deferred get_attributes(Napi::Env env, int parent_id, int var_id,
 					throw std::runtime_error("Variable type not supported yet");
 				}
 				NC_CALL(nc_get_att(parent_id, var_id, name, attribute.value.v));
-
+				
 				result.attributes.push_back(attribute);
 			}
             return result;
@@ -180,65 +186,6 @@ Napi::Promise::Deferred get_attributes(Napi::Env env, int parent_id, int var_id,
 			Napi::Object attributes = Napi::Object::New(env);
 			for (auto nc_attribute= result.attributes.begin(); nc_attribute != result.attributes.end(); nc_attribute++){
 				Napi::Value value=attr2value(env,&*nc_attribute);
-/*				
-				printf("Attr %s type %i\n",nc_attribute->name.c_str(),nc_attribute->type);
-				switch (nc_attribute->type) {
-					case NC_BYTE:
-						printf("Value byte %i\n",nc_attribute->value.i8[0]);
-						ATTR_TO_VAL(i8,int8_t,Number,Int8Array);
-					break;
-					case NC_SHORT:
-						printf("Value short %i\n",nc_attribute->value.i16[0]);
-						ATTR_TO_VAL(i16,int16_t,Number,Int16Array);
-					break;
-					case NC_INT:
-						printf("Value int %i\n",nc_attribute->value.i32[0]);
-						ATTR_TO_VAL(i32,int32_t,Number,Int32Array);
-					break;
-					case NC_FLOAT:
-						printf("Value float %f\n",nc_attribute->value.f[0]);
-						ATTR_TO_VAL(f,float,Number,Float32Array);
-					break;
-					case NC_DOUBLE:
-						ATTR_TO_VAL(f,double,Number,Float64Array);
-					break;
-					case NC_UBYTE:
-						ATTR_TO_VAL(u8,uint8_t,Number,Uint8Array);
-					break;
-					case NC_USHORT:
-						ATTR_TO_VAL(u16,uint16_t,Number,Uint16Array);
-					break;
-					case NC_UINT:
-						ATTR_TO_VAL(u32,uint32_t,Number,Uint32Array);
-					break;
-					case NC_UINT64:
-						ATTR_TO_VAL(u64,uint64_t,BigInt,BigUint64Array);
-					break;
-					case NC_INT64:
-						ATTR_TO_VAL(i64,int64_t,BigInt,BigInt64Array);
-					break;
-					case NC_CHAR: 
-						value = Napi::String::New(env, nc_attribute->value.s);
-						delete[] nc_attribute->value.s;
-					break;
-					case NC_STRING:
-						if (nc_attribute->len == 1) {
-							value = Napi::String::New(env, nc_attribute->value.ps[0]);
-						}
-						else {
-							Napi::Array result_array = Napi::Array::New(env, nc_attribute->len);
-							for (int i = 0; i < static_cast<int>(nc_attribute->len); i++){
-								std::string *res_str=new std::string(nc_attribute->value.ps[i]);
-								result_array[i] = Napi::String::New(env, res_str->c_str());
-								delete res_str;
-							}
-							value = result_array;
-						}
-						NC_VOID_CALL(nc_free_string(nc_attribute->len,nc_attribute->value.ps));
-						delete[] nc_attribute->value.ps;
-					break;
-				}	
-*/
 				if(return_type){
 					Napi::Object types_value = Napi::Object::New(env);
 					types_value.Set(Napi::String::New(env, "type"),Napi::String::New(env, get_type_string(nc_attribute->type)) );
@@ -264,14 +211,10 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 		switch (type) {
 		case NC_BYTE: {
 			if (value.IsNumber()) {
-				int8_t v = value.As<Napi::Number>().Int32Value();
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_ATTR(int8_t, Number, Int32Value);
 #if NODE_MAJOR_VERSION > 8
 			} else if (value.IsBigInt()) {
-				int8_t v = value.As<Napi::BigInt>().Int64Value(nullptr);
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_BIG_ATTR(int8_t, BigInt, Int64Value);
 #endif
 			} else {
 				auto array = value.As<Napi::Int8Array>();
@@ -281,14 +224,10 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 		} break;
 		case NC_SHORT: {
 			if (value.IsNumber()) {
-				int16_t v = value.As<Napi::Number>().Int32Value();
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_ATTR(int16_t, Number, Int32Value);
 #if NODE_MAJOR_VERSION > 8
 			} else if (value.IsBigInt()) {
-				int16_t v = value.As<Napi::BigInt>().Int64Value(nullptr);
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_BIG_ATTR(int16_t, BigInt, Int64Value);
 #endif
 			} else {
 				auto array = value.As<Napi::Int16Array>();
@@ -298,14 +237,10 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 		} break;
 		case NC_INT: {
 			if (value.IsNumber()) {
-				int32_t v = value.As<Napi::Number>().Int32Value();
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_ATTR(int32_t, Number, Int32Value);
 #if NODE_MAJOR_VERSION > 8
 			} else if (value.IsBigInt()) {
-				int32_t v = value.As<Napi::BigInt>().Int64Value(nullptr);
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_BIG_ATTR(int32_t, BigInt, Int64Value);
 #endif
 			} else {
 				auto array = value.As<Napi::Int32Array>();
@@ -315,14 +250,10 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 		} break;
 		case NC_FLOAT: {
 			if (value.IsNumber()) {
-				float v = value.As<Napi::Number>().FloatValue();
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_ATTR(float, Number, FloatValue);
 #if NODE_MAJOR_VERSION > 8
 			} else if (value.IsBigInt()) {
-				float v = value.As<Napi::BigInt>().Int64Value(nullptr);
-				attribute_value.len = 1;
-				attribute_value.value.v= &v;
+				VAL_TO_BIG_ATTR(float, BigInt, Int64Value);
 #endif
 			} else {
 				auto array = value.As<Napi::Float32Array>();
@@ -332,14 +263,10 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 		} break;
 		case NC_DOUBLE: {
 			if (value.IsNumber()) {
-				double v = value.As<Napi::Number>().DoubleValue();
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_ATTR(double, Number, DoubleValue);
 #if NODE_MAJOR_VERSION > 8
 			} else if (value.IsBigInt()) {
-				double v = value.As<Napi::BigInt>().Int64Value(nullptr);
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_BIG_ATTR(double, BigInt, Int64Value);
 #endif
 			} else {
 				auto array = value.As<Napi::Float64Array>();
@@ -349,14 +276,10 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 		} break;
 		case NC_UBYTE: {
 			if (value.IsNumber()) {
-				uint8_t v = value.As<Napi::Number>().Uint32Value();
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_ATTR(uint8_t, Number, Uint32Value);
 #if NODE_MAJOR_VERSION > 8
 			} else if (value.IsBigInt()) {
-				uint8_t v = value.As<Napi::BigInt>().Uint64Value(nullptr);
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_BIG_ATTR(uint8_t, BigInt, Uint64Value);
 #endif
 			} else {
 				auto array = value.As<Napi::Uint8Array>();
@@ -366,14 +289,10 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 		} break;
 		case NC_USHORT: {
 			if (value.IsNumber()) {
-				uint16_t v = value.As<Napi::Number>().Uint32Value();
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_ATTR(uint16_t, Number, Uint32Value);
 #if NODE_MAJOR_VERSION > 8
 			} else if (value.IsBigInt()) {
-				uint16_t v = value.As<Napi::BigInt>().Uint64Value(nullptr);
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_BIG_ATTR(uint16_t, BigInt, Uint64Value);
 #endif
 			} else {
 				auto array = value.As<Napi::Uint16Array>();
@@ -383,14 +302,10 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 		} break;
 		case NC_UINT: {
 			if (value.IsNumber()) {
-				uint32_t v = value.As<Napi::Number>().Uint32Value();
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_ATTR(uint32_t, Number, Uint32Value);
 #if NODE_MAJOR_VERSION > 8
 			} else if (value.IsBigInt()) {
-				uint32_t v = value.As<Napi::BigInt>().Uint64Value(nullptr);
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_BIG_ATTR(uint32_t, BigInt, Uint64Value);
 #endif
 			} else {
 				auto array = value.As<Napi::Uint32Array>();
@@ -402,13 +317,9 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 
 		case NC_UINT64: {
 			if (value.IsNumber()) {
-				uint64_t v = value.As<Napi::Number>().Uint32Value();
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_ATTR(uint64_t, Number, Uint64Value);
 			} else if (value.IsBigInt()) {
-				uint64_t v = value.As<Napi::BigInt>().Uint64Value(nullptr);
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_BIG_ATTR(uint64_t, BigInt, Uint64Value);
 			} else {
 				auto array = value.As<Napi::BigUint64Array>();
 				attribute_value.len = array.ElementLength();
@@ -417,13 +328,9 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 		} break;
 		case NC_INT64: {
 			if (value.IsNumber()) {
-				int64_t v = value.As<Napi::Number>().Uint32Value();
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_ATTR(uint64_t, Number, Int64Value);
 			} else if (value.IsBigInt()) {
-				int64_t v = value.As<Napi::BigInt>().Uint64Value(nullptr);
-				attribute_value.len = 1;
-				attribute_value.value.v = &v;
+				VAL_TO_BIG_ATTR(int64_t, BigInt, Int64Value);
 			} else {
 				auto array = value.As<Napi::BigInt64Array>();
 				attribute_value.len = array.ElementLength();
@@ -439,11 +346,14 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 			attribute_value.len = v.length();
 		} break;
 		case NC_STRING: {
+			printf("_______________ STRING_________________________\n");
 			std::vector<std::unique_ptr<const std::string > > string{};
 			std::vector<const char*> cstrings{};
 			if(value.IsArray()){
 				auto arr = value.As<Napi::Array>();
+				printf("array len = %d",static_cast<int>(arr.Length()));
 				attribute_value.len = static_cast<int>(arr.Length());
+				printf("array len = %d",static_cast<int>(attribute_value.len));
 				for (int i =0; i<static_cast<int>(arr.Length()); i++){
 					Napi::Value napiV=arr[i];
 					string.push_back(std::make_unique<std::string>(std::string(napiV.ToString())));
@@ -485,11 +395,12 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 				}	
 			} else {
 				NC_CALL(nc_put_att(parent_id, var_id,attribute_value.name.c_str(), attribute_value.type, attribute_value.len, attribute_value.value.v));
+				
 			}
 			return result;
 		},
 		[] (Napi::Env env, attr_struct result) {
-			printf("Get value %s\n",result.name.c_str());
+			printf("after upt att\n");
 			Napi::Value value=attr2value(env,&result);
 			
 			Napi::Object types_value = Napi::Object::New(env);
@@ -497,6 +408,7 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 			types_value.Set(Napi::String::New(env, "value"), value);
 			Napi::Object attribute = Napi::Object::New(env);
 			attribute.Set(Napi::String::New(env, result.name), types_value);
+			printf("return atrr\n");
 			return attribute;
 		}
 	);

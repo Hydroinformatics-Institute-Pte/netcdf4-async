@@ -26,6 +26,23 @@
         }                                                  \
         delete[] nc_attribute->value.v;
 
+#define VAL_TO_ATTR(type, napi_type,construct)                           \
+    if (value.IsNumber()) {                                              \
+		attribute_value.len = 1;                                         \
+		type* pv = new type[attribute_value.len];                        \
+		pv[0] = value.As<Napi::napi_type>().construct();			     \
+		attribute_value.value.v = pv;                                    \
+    }
+
+#define VAL_TO_BIG_ATTR(type, napi_type,construct)                       \
+    if (value.IsNumber()) {                                              \
+		attribute_value.len = 1;                                         \
+		type* pv = new type[attribute_value.len];                        \
+		pv[0] = value.As<Napi::napi_type>().construct(nullptr);			 \
+		attribute_value.value.v = pv;                                    \
+    }
+
+
 namespace netcdf4async {
 
 Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred, Napi::Env env, int parent_id, int var_id,
