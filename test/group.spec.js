@@ -1,7 +1,9 @@
 const chai = require("chai");
 const expect = chai.expect;
 const chaiAsPromised = require('chai-as-promised');
+const chaiAlmost=require("chai-almost");
 chai.use(chaiAsPromised);
+chai.use(chaiAlmost(0.0001));
 
 const netcdf4 = require("..");
 const { join } = require("path");
@@ -176,24 +178,32 @@ describe("Group", function () {
   });
 
   
-  const testAddAttr=(fileType,type,value)=>{
+  const testAddAttr=(fileType,type,value,values)=>{
 
-    it(`[${fileType}] should add attribute type ${type}`,async function() {
-      let file=await newFile(fileType==='hdf5'?fixture:fixture1,fileType==='hdf5'?"w":"c");
-      if (fileType==='netcdf3') {
-        await file.dataMode();
-      }
-      await expect(file.root.getAttributes()).eventually.to.not.have.property("root_attr_prop");
-      const attr=await expect(file.root.addAttribute("root_attr_prop",type,value)).to.be.fulfilled;
-      console.log(attr);
-      expect(attr).deep.equal({"root_attr_prop":{"type":type,"value":value}});
-      expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
-      await file.close();
-      file = await netcdf4.open(file.name, "r");
-      await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
-      await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop").to.deep.property("value").to.deep.equal(value);
-      await expect(file.root.getAttributes(true)).eventually.to.have.property("root_attr_prop").to.deep.equal({"type":type,"value":value});
-    })  
+    console.log(arrTypes[type]);
+    [
+      [arrTypes[type][1](value)," "],
+      [values=arrTypes[type][0].prototype?new arrTypes[type][0](values):arrTypes[type][0](values)," array "]
+    ].forEach(([value,scalar])=>{
+      it(`[${fileType}] should add attribute${scalar}type ${type}`,async function() {
+        console.log(`[${fileType}] should add attribute${scalar}type ${type}`);
+        let file=await newFile(fileType==='hdf5'?fixture:fixture1,fileType==='hdf5'?"w":"c");
+        if (fileType==='netcdf3') {
+          await file.dataMode();
+        }
+        await expect(file.root.getAttributes()).eventually.to.not.have.property("root_attr_prop");
+        const attr=await expect(file.root.addAttribute("root_attr_prop",type,value)).to.be.fulfilled;
+        console.log(attr);
+        expect(attr).deep.almost.equal({"root_attr_prop":{"type":type,"value":value}});
+        expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
+        await file.close();
+        file = await netcdf4.open(file.name, "r");
+        await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
+        await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop").to.deep.property("value").to.deep.almost.equal(value);
+        await expect(file.root.getAttributes(true)).eventually.to.have.property("root_attr_prop").to.deep.almost.equal({"type":type,"value":value});
+      });
+    });
+
   }
   
 
@@ -214,10 +224,10 @@ describe("Group", function () {
     testSuiteOld.push(['int64',100000,[0,200,3000,555666].map(v=>BigInt(v)),BigInt(100)]);
   };
   testSuiteOld
-  .forEach(v=>testAddAttr('hdf5',v[0],arrTypes[v[0]][1](v[1])));
+  .forEach(v=>testAddAttr('hdf5',v[0],v[1],v[2]));
   testSuiteOld
   .filter(v=>['ubyte','ushort','uint','int64','uint64','string'].indexOf(v[0])===-1)
-  .forEach(v=>testAddAttr('netcdf3',v[0],arrTypes[v[0]][1](v[1])));
+  .forEach(v=>testAddAttr('netcdf3',v[0],v[0],v[1],v[2]));
 
 
 
