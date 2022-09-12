@@ -1,7 +1,9 @@
 const chai = require("chai");
 const expect = chai.expect;
 const chaiAsPromised = require('chai-as-promised');
+const chaiAlmost=require("chai-almost");
 chai.use(chaiAsPromised);
+chai.use(chaiAlmost(0.0001));
 
 const netcdf4 = require("..");
 const { join } = require("path");
@@ -186,13 +188,13 @@ describe("Group", function () {
       await expect(file.root.getAttributes()).eventually.to.not.have.property("root_attr_prop");
       const attr=await expect(file.root.addAttribute("root_attr_prop",type,value)).to.be.fulfilled;
       console.log(attr);
-      expect(attr).deep.equal({"root_attr_prop":{"type":type,"value":value}});
+      expect(attr).deep.almost.equal({"root_attr_prop":{"type":type,"value":value}});
       expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
       await file.close();
       file = await netcdf4.open(file.name, "r");
       await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
-      await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop").to.deep.property("value").to.deep.equal(value);
-      await expect(file.root.getAttributes(true)).eventually.to.have.property("root_attr_prop").to.deep.equal({"type":type,"value":value});
+      await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop").to.deep.property("value").to.deep.almost.equal(value);
+      await expect(file.root.getAttributes(true)).eventually.to.have.property("root_attr_prop").to.deep.almost.equal({"type":type,"value":value});
     })  
   }
   
