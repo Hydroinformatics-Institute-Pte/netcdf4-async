@@ -87,8 +87,6 @@ Napi::Value attr2value(Napi::Env env,attr_struct *nc_attribute) {
 				std::string s = std::string(nc_attribute->value.s);
 				printf("string = %s\n", nc_attribute->value.s);
 				value = Napi::String::New(env, s.c_str());
-				//NC_VOID_CALL(nc_free_string(nc_attribute->len,&nc_attribute->value.s));
-				//delete[] nc_attribute->value.s;
 			}
 			else {
 				Napi::Array result_array = Napi::Array::New(env, nc_attribute->len);
@@ -98,8 +96,6 @@ Napi::Value attr2value(Napi::Env env,attr_struct *nc_attribute) {
 					delete res_str;
 				}
 				value = result_array;
-				NC_VOID_CALL(nc_free_string(nc_attribute->len,nc_attribute->value.ps));
-				delete[] nc_attribute->value.ps;
 			}
 		break;
 	}	
@@ -186,6 +182,9 @@ Napi::Promise::Deferred get_attributes(Napi::Env env, int parent_id, int var_id,
 			Napi::Object attributes = Napi::Object::New(env);
 			for (auto nc_attribute= result.attributes.begin(); nc_attribute != result.attributes.end(); nc_attribute++){
 				Napi::Value value=attr2value(env,&*nc_attribute);
+				if (nc_attribute->type ==NC_STRING && nc_attribute->len ==1) {
+					nc_attribute->value.s = nc_attribute->value.ps[0];
+				}
 				if(return_type){
 					Napi::Object types_value = Napi::Object::New(env);
 					types_value.Set(Napi::String::New(env, "type"),Napi::String::New(env, get_type_string(nc_attribute->type)) );
@@ -193,6 +192,10 @@ Napi::Promise::Deferred get_attributes(Napi::Env env, int parent_id, int var_id,
 					attributes.Set(Napi::String::New(env, nc_attribute->name), types_value);
 				} else {
 					attributes.Set(Napi::String::New(env, nc_attribute->name), value);
+				}
+				if (nc_attribute->type == NC_STRING) {
+					NC_VOID_CALL(nc_free_string(nc_attribute->len,nc_attribute->value.ps));
+					delete[] nc_attribute->value.ps;
 				}
 			}
 			return attributes;
@@ -346,27 +349,21 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 			attribute_value.len = v.length();
 		} break;
 		case NC_STRING: {
-			printf("_______________ STRING_________________________\n");
-			std::vector<std::unique_ptr<const std::string > > string{};
-			std::vector<const char*> cstrings{};
+			std::vector<std::unique_ptr<const std::string > >* string = new std::vector<std::unique_ptr<const std::string > >() ;
+			std::vector<const char*>* cstrings = new std::vector<const char*>();
 			if(value.IsArray()){
 				auto arr = value.As<Napi::Array>();
-				printf("array len = %d",static_cast<int>(arr.Length()));
 				attribute_value.len = static_cast<int>(arr.Length());
-				printf("array len = %d",static_cast<int>(attribute_value.len));
 				for (int i =0; i<static_cast<int>(arr.Length()); i++){
 					Napi::Value napiV=arr[i];
-					string.push_back(std::make_unique<std::string>(std::string(napiV.ToString())));
-					cstrings.push_back(string.at(i)->c_str());
+					string->push_back(std::make_unique<std::string>(std::string(napiV.ToString().Utf8Value())));
+					cstrings->push_back(string->at(i)->c_str());
 				}
-				attribute_value.value.v = cstrings.data();
 			} else {
-				std::string v = value.As<Napi::String>().ToString();
-				attribute_value.value.s = new char[v.length()+1];
-				attribute_value.value.s[v.length()] = 0;
-				strcpy(attribute_value.value.s, v.c_str());
-				attribute_value.len = 1;
+				string->push_back(std::make_unique<std::string>(std::string(value.As<Napi::String>().ToString().Utf8Value())));
+				cstrings->push_back(string->at(0)->c_str());
 			}
+			attribute_value.value.v = cstrings->data();
 			
 		} break;
 		default:{
@@ -378,26 +375,19 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 		auto worker = new NCAsyncWorker<attr_struct>(
 		env, deferred,
 		[parent_id, var_id, attribute_value] (const NCAsyncWorker<attr_struct>* worker) {
-			attr_struct result;
-			result.name = attribute_value.name;
-			result.len = attribute_value.len;
-			result.type = attribute_value.type;
-			result.value = attribute_value.value;
+			
 			if(attribute_value.type == NC_CHAR ) {
 				std::string text = std::string(attribute_value.value.s);
 				NC_CALL(nc_put_att_text(parent_id, var_id, attribute_value.name.c_str(),
 					text.length(), text.c_str()));
 			} if(attribute_value.type == NC_STRING ) {
-				if (attribute_value.len == 1) {
-					NC_CALL(nc_put_att_string(parent_id, var_id,attribute_value.name.c_str(), attribute_value.len, const_cast<const char**>(&attribute_value.value.s)));	
-				} else {
-					NC_CALL(nc_put_att_string(parent_id, var_id,attribute_value.name.c_str(), attribute_value.len, static_cast<const char **>(attribute_value.value.v)));
-				}	
+				printf("put string %s\n",static_cast<const char **>(attribute_value.value.v)[0]);
+				NC_CALL(nc_put_att_string(parent_id, var_id,attribute_value.name.c_str(), attribute_value.len, static_cast<const char **>(attribute_value.value.v)));
 			} else {
 				NC_CALL(nc_put_att(parent_id, var_id,attribute_value.name.c_str(), attribute_value.type, attribute_value.len, attribute_value.value.v));
 				
 			}
-			return result;
+			return attribute_value;
 		},
 		[] (Napi::Env env, attr_struct result) {
 			printf("after upt att\n");
