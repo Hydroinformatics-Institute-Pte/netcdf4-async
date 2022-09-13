@@ -44,52 +44,34 @@ Napi::Value attr2value(Napi::Env env,attr_struct *nc_attribute) {
 //	printf("Attr %s type %i\n",nc_attribute->name.c_str(),nc_attribute->type);
 	switch (nc_attribute->type) {
 		case NC_BYTE:
-
-			if (nc_attribute->len>1){
-				
-				Napi::TypedArray v = Napi::Int8Array::New(env, nc_attribute->len);
-				for (int i =0; i<static_cast<int>(nc_attribute->len);i++){
-					v[i] = Napi::Number::New(env,nc_attribute->value.i8[i]);
-				}
-				value = v;				
-				
-				// value = Napi::Int8Array::New(env, sizeof(int8_t),
-				// 					   Napi::ArrayBuffer::New(env, temp, n* sizeof(int8_t)),
-				// 					   0, napi_int8_array);
-			} else {
-				ATTR_TO_VAL(i8,int8_t,Number,Int8Array);
-			}
+				ATTR_TO_VAL(int8_t);
 		break;
 		case NC_SHORT:
-			// printf("Value short %i\n",nc_attribute->value.i16[0]);
-			ATTR_TO_VAL(i16,int16_t,Number,Int16Array);
+			ATTR_TO_VAL(int16_t);
 		break;
 		case NC_INT:
-			// printf("Value int %i\n",nc_attribute->value.i32[0]);
-			ATTR_TO_VAL(i32,int32_t,Number,Int32Array);
+			ATTR_TO_VAL(int32_t);
 		break;
 		case NC_FLOAT:
-			// printf("Value float %f\n",nc_attribute->value.f[0]);
-			ATTR_TO_VAL(f,float,Number,Float32Array);
+			ATTR_TO_VAL(float);
 		break;
 		case NC_DOUBLE:
-			// printf("Value double %lf\n",nc_attribute->value.d[0]);
-			ATTR_TO_VAL(d,double,Number,Float64Array);
+			ATTR_TO_VAL(double);
 		break;
 		case NC_UBYTE:
-			ATTR_TO_VAL(u8,uint8_t,Number,Uint8Array);
+			ATTR_TO_VAL(uint8_t);
 		break;
 		case NC_USHORT:
-			ATTR_TO_VAL(u16,uint16_t,Number,Uint16Array);
+			ATTR_TO_VAL(uint16_t);
 		break;
 		case NC_UINT:
-			ATTR_TO_VAL(u32,uint32_t,Number,Uint32Array);
+			ATTR_TO_VAL(uint32_t);
 		break;
 		case NC_UINT64:
-			ATTR_TO_VAL(u64,uint64_t,BigInt,BigUint64Array);
+			ATTR_TO_VAL(uint64_t);
 		break;
 		case NC_INT64:
-			ATTR_TO_VAL(i64,int64_t,BigInt,BigInt64Array);
+			ATTR_TO_VAL(int64_t);
 		break;
 		case NC_CHAR: 
 			value = Napi::String::New(env, nc_attribute->value.s);

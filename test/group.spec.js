@@ -179,9 +179,10 @@ describe("Group", function () {
   
   const testAddAttr=(fileType,type,value,values)=>{
 
-    const cases=[
+    const cases=[];
+    cases.push(
       [arrTypes[type][1](value)," "]
-    ];
+    );
     if (!isNaN(value)) {
       if (type.substr(-2)!=='64') {
         cases.push([BigInt(parseInt(value))," BigInt representation of ",parseInt(value)])
@@ -190,9 +191,11 @@ describe("Group", function () {
         cases.push([parseInt(value)," Number representation of ",BigInt(value)])
       }
     }
-//  cases.push([values=arrTypes[type][0].prototype?new arrTypes[type][0](values):arrTypes[type][0](values)," array "])
+    
+    cases.push([values=arrTypes[type][0].prototype?new arrTypes[type][0](values):arrTypes[type][0](values)," array "])
     cases.forEach(([value,scalar,v1])=>{
       it(`[${fileType}] should add attribute${scalar}type ${type} with value ${value}`,async function() {
+//        console.log(`[${fileType}] should add attribute${scalar}type ${type} with value ${value}`);
         let file=await newFile(fileType==='hdf5'?fixture:fixture1,fileType==='hdf5'?"w":"c");
         if (fileType==='netcdf3') {
           await file.dataMode();
@@ -233,20 +236,5 @@ describe("Group", function () {
   testSuiteOld
   .filter(v=>['ubyte','ushort','uint','int64','uint64','string'].indexOf(v[0])===-1)
   .forEach(v=>testAddAttr('netcdf3',v[0],v[1],v[2]));
-
-
-
-  // it("should add attribute",async function() {
-  //   await expect(file.root.getAttributes()).eventually.to.not.have.property("root_attr_prop");
-  //   const attr = await expect(file.root.addAttribute("root_attr_prop","string","root attr property")).to.be.fulfilled;
-  //   console.log(attr);
-  //   await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
-  //   await file.close();
-  //   file = await netcdf4.open(tempFileName, "r");
-  //   await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
-  //   await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop").to.deep.property("value").to.deep.equal("root attr property");
-  //   await expect(file.root.getAttributes(true)).eventually.to.have.property("root_attr_prop").to.deep.equal({"type":"string","value":"root attr property"});
-  // })  
-
 
 });
