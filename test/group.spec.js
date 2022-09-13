@@ -164,7 +164,6 @@ describe("Group", function () {
       await expect(
         file.root.getSubgroup("mozaic_flight_2012030419144751_ascent").then(group=>group.getAttributes()))
         .to.be.fulfilled;
-    console.log(attributes);
     expect(attributes).to.have.property("airport_dep");
     expect(attributes).to.have.property("flight");
     expect(attributes).to.have.property("level");
@@ -180,20 +179,17 @@ describe("Group", function () {
   
   const testAddAttr=(fileType,type,value,values)=>{
 
-    console.log(arrTypes[type]);
     [
-      [arrTypes[type][1](value)," "],
-      [values=arrTypes[type][0].prototype?new arrTypes[type][0](values):arrTypes[type][0](values)," array "]
+      [arrTypes[type][1](value)," "] // ,
+//      [values=arrTypes[type][0].prototype?new arrTypes[type][0](values):arrTypes[type][0](values)," array "]
     ].forEach(([value,scalar])=>{
-      it(`[${fileType}] should add attribute${scalar}type ${type}`,async function() {
-        console.log(`[${fileType}] should add attribute${scalar}type ${type}`);
+      it(`[${fileType}] should add attribute${scalar}type ${type} with value ${value}`,async function() {
         let file=await newFile(fileType==='hdf5'?fixture:fixture1,fileType==='hdf5'?"w":"c");
         if (fileType==='netcdf3') {
           await file.dataMode();
         }
         await expect(file.root.getAttributes()).eventually.to.not.have.property("root_attr_prop");
         const attr=await expect(file.root.addAttribute("root_attr_prop",type,value)).to.be.fulfilled;
-        console.log(attr);
         expect(attr).deep.almost.equal({"root_attr_prop":{"type":type,"value":value}});
         expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
         await file.close();
@@ -210,13 +206,13 @@ describe("Group", function () {
 
   const testSuiteOld=[
     ['byte',10,[10,20,30,40],127],
-    // ['short',1024,[20,512,333,1024],32767],
-    // ['int',100000,[0,-200,3000,555666],32767],
-    // ['float',153.2,[-12,33,55.5,106.2],-555.555],
-    // ['double',153.2,[-12,33,55.5,106.2],-555.555],
-    // ['ubyte',10,[10,20,30,40],127],
-    // ['ushort',1024,[20,512,333,1024],127],
-    // ['uint',100000,[0,200,3000,555666],127],
+    ['short',1024,[20,512,333,1024],32767],
+    ['int',100000,[0,-200,3000,555666],32767],
+    ['float',153.2,[-12,33,55.5,106.2],-555.555],
+    ['double',153.2,[-12,33,55.5,106.2],-555.555],
+    ['ubyte',10,[10,20,30,40],127],
+    ['ushort',1024,[20,512,333,1024],127],
+    ['uint',100000,[0,200,3000,555666],127],
     ['string',"Test value",["111","222","333","444"],"fill"]
   ];
   if (process.versions.node.split(".")[0]>=10) {
@@ -225,9 +221,9 @@ describe("Group", function () {
   };
   testSuiteOld
   .forEach(v=>testAddAttr('hdf5',v[0],v[1],v[2]));
-  // testSuiteOld
-  // .filter(v=>['ubyte','ushort','uint','int64','uint64','string'].indexOf(v[0])===-1)
-  // .forEach(v=>testAddAttr('netcdf3',v[0],v[0],v[1],v[2]));
+  testSuiteOld
+  .filter(v=>['ubyte','ushort','uint','int64','uint64','string'].indexOf(v[0])===-1)
+  .forEach(v=>testAddAttr('netcdf3',v[0],v[1],v[2]));
 
 
 

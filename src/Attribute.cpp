@@ -5,6 +5,7 @@
 #include "netcdf4-async.h"
 #include "async.h"
 #include "utils.h"
+#include <node_version.h>
 
 namespace netcdf4async {
 union UnionType{
@@ -40,7 +41,7 @@ struct NCAttribute_list
 
 Napi::Value attr2value(Napi::Env env,attr_struct *nc_attribute) {
 	Napi::Value value;
-	// printf("Attr %s type %i\n",nc_attribute->name.c_str(),nc_attribute->type);
+//	printf("Attr %s type %i\n",nc_attribute->name.c_str(),nc_attribute->type);
 	switch (nc_attribute->type) {
 		case NC_BYTE:
 
@@ -220,168 +221,68 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 		attribute_value.name = attribute_name;
 		attribute_value.type = type;
 		switch (type) {
-		case NC_BYTE: {
-			if (value.IsNumber()) {
-				VAL_TO_ATTR(int8_t, Number, Int32Value);
+			case NC_BYTE: 
+				VAL_TO_ATTR(int8_t)
+				break;
+			case NC_SHORT: 
+				VAL_TO_ATTR(int16_t)
+				break;
+			case NC_INT: 
+				VAL_TO_ATTR(int32_t)
+				break;
+			case NC_FLOAT: 
+				VAL_TO_ATTR(float)
+				break;
+			case NC_DOUBLE: 
+				VAL_TO_ATTR(double)
+				break;
+			case NC_UBYTE: 
+				VAL_TO_ATTR(uint8_t)
+				break;
+			case NC_USHORT: 
+				VAL_TO_ATTR(uint16_t)
+				break;
+			case NC_UINT: 
+				VAL_TO_ATTR(uint32_t)
+				break;
 #if NODE_MAJOR_VERSION > 8
-			} else if (value.IsBigInt()) {
-				VAL_TO_BIG_ATTR(int8_t, BigInt, Int64Value);
+			case NC_UINT64: 
+				VAL_TO_ATTR(uint64_t)
+				break;
+			case NC_INT64: 
+				VAL_TO_ATTR(int64_t)
+				break;
 #endif
-			} else {
-				printf("expected Int8Array\n");
-				printf("isArray = %s", value.IsArray()? "true": "false");
-				printf("IsTypedArray = %s", value.IsTypedArray()? "true": "false");
-				auto array = value.As<Napi::Int8Array>();
-				attribute_value.len = array.ElementLength();
-				attribute_value.value.v = array.ArrayBuffer().Data();
-			}
-		} break;
-		case NC_SHORT: {
-			if (value.IsNumber()) {
-				VAL_TO_ATTR(int16_t, Number, Int32Value);
-#if NODE_MAJOR_VERSION > 8
-			} else if (value.IsBigInt()) {
-				VAL_TO_BIG_ATTR(int16_t, BigInt, Int64Value);
-#endif
-			} else {
-				auto array = value.As<Napi::Int16Array>();
-				attribute_value.len = array.ElementLength();
-				attribute_value.value.v = array.ArrayBuffer().Data();
-			}
-		} break;
-		case NC_INT: {
-			if (value.IsNumber()) {
-				VAL_TO_ATTR(int32_t, Number, Int32Value);
-#if NODE_MAJOR_VERSION > 8
-			} else if (value.IsBigInt()) {
-				VAL_TO_BIG_ATTR(int32_t, BigInt, Int64Value);
-#endif
-			} else {
-				auto array = value.As<Napi::Int32Array>();
-				attribute_value.len = array.ElementLength();
-				attribute_value.value.v = array.ArrayBuffer().Data();
-			}
-		} break;
-		case NC_FLOAT: {
-			if (value.IsNumber()) {
-				VAL_TO_ATTR(float, Number, FloatValue);
-#if NODE_MAJOR_VERSION > 8
-			} else if (value.IsBigInt()) {
-				VAL_TO_BIG_ATTR(float, BigInt, Int64Value);
-#endif
-			} else {
-				auto array = value.As<Napi::Float32Array>();
-				attribute_value.len = array.ElementLength();
-				attribute_value.value.v = array.ArrayBuffer().Data();
-			}
-		} break;
-		case NC_DOUBLE: {
-			if (value.IsNumber()) {
-				VAL_TO_ATTR(double, Number, DoubleValue);
-#if NODE_MAJOR_VERSION > 8
-			} else if (value.IsBigInt()) {
-				VAL_TO_BIG_ATTR(double, BigInt, Int64Value);
-#endif
-			} else {
-				auto array = value.As<Napi::Float64Array>();
-				attribute_value.len = array.ElementLength();
-				attribute_value.value.v = array.ArrayBuffer().Data();
-			}
-		} break;
-		case NC_UBYTE: {
-			if (value.IsNumber()) {
-				VAL_TO_ATTR(uint8_t, Number, Uint32Value);
-#if NODE_MAJOR_VERSION > 8
-			} else if (value.IsBigInt()) {
-				VAL_TO_BIG_ATTR(uint8_t, BigInt, Uint64Value);
-#endif
-			} else {
-				auto array = value.As<Napi::Uint8Array>();
-				attribute_value.len = array.ElementLength();
-				attribute_value.value.v = array.ArrayBuffer().Data();
-			}
-		} break;
-		case NC_USHORT: {
-			if (value.IsNumber()) {
-				VAL_TO_ATTR(uint16_t, Number, Uint32Value);
-#if NODE_MAJOR_VERSION > 8
-			} else if (value.IsBigInt()) {
-				VAL_TO_BIG_ATTR(uint16_t, BigInt, Uint64Value);
-#endif
-			} else {
-				auto array = value.As<Napi::Uint16Array>();
-				attribute_value.len = array.ElementLength();
-				attribute_value.value.v = array.ArrayBuffer().Data();
-			}
-		} break;
-		case NC_UINT: {
-			if (value.IsNumber()) {
-				VAL_TO_ATTR(uint32_t, Number, Uint32Value);
-#if NODE_MAJOR_VERSION > 8
-			} else if (value.IsBigInt()) {
-				VAL_TO_BIG_ATTR(uint32_t, BigInt, Uint64Value);
-#endif
-			} else {
-				auto array = value.As<Napi::Uint32Array>();
-				attribute_value.len = array.ElementLength();
-				attribute_value.value.v = array.ArrayBuffer().Data();
-			}
-		} break;
-#if NODE_MAJOR_VERSION > 8
-
-		case NC_UINT64: {
-			if (value.IsNumber()) {
-				VAL_TO_ATTR(uint64_t, Number, Uint64Value);
-			} else if (value.IsBigInt()) {
-				VAL_TO_BIG_ATTR(uint64_t, BigInt, Uint64Value);
-			} else {
-				auto array = value.As<Napi::BigUint64Array>();
-				attribute_value.len = array.ElementLength();
-				attribute_value.value.v = array.ArrayBuffer().Data();
-			}
-		} break;
-		case NC_INT64: {
-			if (value.IsNumber()) {
-				VAL_TO_ATTR(uint64_t, Number, Int64Value);
-			} else if (value.IsBigInt()) {
-				VAL_TO_BIG_ATTR(int64_t, BigInt, Int64Value);
-			} else {
-				auto array = value.As<Napi::BigInt64Array>();
-				attribute_value.len = array.ElementLength();
-				attribute_value.value.v = array.ArrayBuffer().Data();
-			}
-		} break;
-#endif
-		case NC_CHAR:{
-			std::string v = value.As<Napi::String>().ToString();
-			attribute_value.value.s = new char[v.length()+1];
-			attribute_value.value.s[v.length()] = 0;
-			strcpy(attribute_value.value.s, v.c_str());
-			attribute_value.len = v.length();
-		} break;
-		case NC_STRING: {
-			std::vector<std::unique_ptr<const std::string > >* string = new std::vector<std::unique_ptr<const std::string > >() ;
-			std::vector<const char*>* cstrings = new std::vector<const char*>();
-			if(value.IsArray()){
-				auto arr = value.As<Napi::Array>();
-				attribute_value.len = static_cast<int>(arr.Length());
-				for (int i =0; i<static_cast<int>(arr.Length()); i++){
-					Napi::Value napiV=arr[i];
-					string->push_back(std::make_unique<std::string>(std::string(napiV.ToString().Utf8Value())));
-					cstrings->push_back(string->at(i)->c_str());
+			case NC_CHAR:{
+				std::string v = value.As<Napi::String>().ToString();
+				attribute_value.value.s = new char[v.length()+1];
+				attribute_value.value.s[v.length()] = 0;
+				strcpy(attribute_value.value.s, v.c_str());
+				attribute_value.len = v.length();
+			} break;
+			case NC_STRING: {
+				std::vector<std::unique_ptr<const std::string > >* string = new std::vector<std::unique_ptr<const std::string > >() ;
+				std::vector<const char*>* cstrings = new std::vector<const char*>();
+				if(value.IsArray()){
+					auto arr = value.As<Napi::Array>();
+					attribute_value.len = static_cast<int>(arr.Length());
+					for (int i =0; i<static_cast<int>(arr.Length()); i++){
+						Napi::Value napiV=arr[i];
+						string->push_back(std::make_unique<std::string>(std::string(napiV.ToString().Utf8Value())));
+						cstrings->push_back(string->at(i)->c_str());
+					}
+				} else {
+					string->push_back(std::make_unique<std::string>(std::string(value.As<Napi::String>().ToString().Utf8Value())));
+					cstrings->push_back(string->at(0)->c_str());
+					attribute_value.len = 1;
 				}
-			} else {
-				string->push_back(std::make_unique<std::string>(std::string(value.As<Napi::String>().ToString().Utf8Value())));
-				cstrings->push_back(string->at(0)->c_str());
-				attribute_value.len = 1;
+				attribute_value.value.v = cstrings->data();
+				
+			} break;
+			default:{
+				deferred.Reject(Napi::String::New(env, "Variable type not supported yet"));
+				return deferred;
 			}
-			attribute_value.value.v = cstrings->data();
-			
-		} break;
-		default:{
-			deferred.Reject(Napi::String::New(env, "Variable type not supported yet"));
-			return deferred;
-		}
 		}
 
 		auto worker = new NCAsyncWorker<attr_struct>(
