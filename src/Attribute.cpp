@@ -43,8 +43,21 @@ Napi::Value attr2value(Napi::Env env,attr_struct *nc_attribute) {
 	// printf("Attr %s type %i\n",nc_attribute->name.c_str(),nc_attribute->type);
 	switch (nc_attribute->type) {
 		case NC_BYTE:
-			// printf("Value byte %i\n",nc_attribute->value.i8[0]);
-			ATTR_TO_VAL(i8,int8_t,Number,Int8Array);
+
+			if (nc_attribute->len>1){
+				
+				Napi::TypedArray v = Napi::Int8Array::New(env, nc_attribute->len);
+				for (int i =0; i<static_cast<int>(nc_attribute->len);i++){
+					v[i] = Napi::Number::New(env,nc_attribute->value.i8[i]);
+				}
+				value = v;				
+				
+				// value = Napi::Int8Array::New(env, sizeof(int8_t),
+				// 					   Napi::ArrayBuffer::New(env, temp, n* sizeof(int8_t)),
+				// 					   0, napi_int8_array);
+			} else {
+				ATTR_TO_VAL(i8,int8_t,Number,Int8Array);
+			}
 		break;
 		case NC_SHORT:
 			// printf("Value short %i\n",nc_attribute->value.i16[0]);
@@ -215,6 +228,9 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 				VAL_TO_BIG_ATTR(int8_t, BigInt, Int64Value);
 #endif
 			} else {
+				printf("expected Int8Array\n");
+				printf("isArray = %s", value.IsArray()? "true": "false");
+				printf("IsTypedArray = %s", value.IsTypedArray()? "true": "false");
 				auto array = value.As<Napi::Int8Array>();
 				attribute_value.len = array.ElementLength();
 				attribute_value.value.v = array.ArrayBuffer().Data();

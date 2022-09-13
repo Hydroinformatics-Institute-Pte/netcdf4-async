@@ -18,13 +18,15 @@
                 Napi::ArrayBuffer::New(                    \
                     env,                                   \
                     nc_attribute->value.v,                 \
-                    nc_attribute->len * sizeof(int16_t)    \
+                    nc_attribute->len * sizeof(type)    \
                 ),                                         \
                 0,                                         \
                 napi_int8_array                            \
             );                                             \
         }                                                  \
         delete[] nc_attribute->value.v;
+
+
 
 #define VAL_TO_ATTR(type, napi_type,construct)                           \
     if (value.IsNumber()) {                                              \

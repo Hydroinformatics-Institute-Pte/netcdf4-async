@@ -210,13 +210,13 @@ describe("Group", function () {
 
   const testSuiteOld=[
     ['byte',10,[10,20,30,40],127],
-    ['short',1024,[20,512,333,1024],32767],
-    ['int',100000,[0,-200,3000,555666],32767],
-    ['float',153.2,[-12,33,55.5,106.2],-555.555],
-    ['double',153.2,[-12,33,55.5,106.2],-555.555],
-    ['ubyte',10,[10,20,30,40],127],
-    ['ushort',1024,[20,512,333,1024],127],
-    ['uint',100000,[0,200,3000,555666],127],
+    // ['short',1024,[20,512,333,1024],32767],
+    // ['int',100000,[0,-200,3000,555666],32767],
+    // ['float',153.2,[-12,33,55.5,106.2],-555.555],
+    // ['double',153.2,[-12,33,55.5,106.2],-555.555],
+    // ['ubyte',10,[10,20,30,40],127],
+    // ['ushort',1024,[20,512,333,1024],127],
+    // ['uint',100000,[0,200,3000,555666],127],
     ['string',"Test value",["111","222","333","444"],"fill"]
   ];
   if (process.versions.node.split(".")[0]>=10) {
@@ -225,9 +225,9 @@ describe("Group", function () {
   };
   testSuiteOld
   .forEach(v=>testAddAttr('hdf5',v[0],v[1],v[2]));
-  testSuiteOld
-  .filter(v=>['ubyte','ushort','uint','int64','uint64','string'].indexOf(v[0])===-1)
-  .forEach(v=>testAddAttr('netcdf3',v[0],v[0],v[1],v[2]));
+  // testSuiteOld
+  // .filter(v=>['ubyte','ushort','uint','int64','uint64','string'].indexOf(v[0])===-1)
+  // .forEach(v=>testAddAttr('netcdf3',v[0],v[0],v[1],v[2]));
 
 
 
