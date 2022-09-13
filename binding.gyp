@@ -21,7 +21,8 @@
                 "src/async.cpp",
                 "src/File.cpp",
                 "src/Attribute.cpp",
-                "src/Group.cpp"
+                "src/Group.cpp",
+                "src/Variable.cpp"
             ],
             "target_name": "netcdf4-async",
             "include_dirs": ["<!@(node -p \"require('node-addon-api').include\")"],

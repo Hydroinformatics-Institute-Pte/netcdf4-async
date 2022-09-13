@@ -133,6 +133,57 @@ class Group : public Napi::ObjectWrap<Group> {
 	std::string name;
 };
 
+class Variable : public Napi::ObjectWrap<Variable> {
+  public:
+	static void Init(Napi::Env env, Napi::Object exports);
+	Variable(const Napi::CallbackInfo &info);
+	static Napi::Object Build(Napi::Env env, int id, int parent_id);
+
+  private:
+	Napi::Value Read(const Napi::CallbackInfo &info);
+	Napi::Value ReadSlice(const Napi::CallbackInfo &info);
+	Napi::Value ReadStridedSlice(const Napi::CallbackInfo &info);
+	Napi::Value Write(const Napi::CallbackInfo &info);
+	Napi::Value WriteSlice(const Napi::CallbackInfo &info);
+	Napi::Value WriteStridedSlice(const Napi::CallbackInfo &info);
+	Napi::Value AddAttribute(const Napi::CallbackInfo &info);
+	Napi::Value GetId(const Napi::CallbackInfo &info);
+	Napi::Value GetType(const Napi::CallbackInfo &info);
+	Napi::Value GetDimensions(const Napi::CallbackInfo &info);
+	Napi::Value GetAttributes(const Napi::CallbackInfo &info);
+	Napi::Value SetAttribute(const Napi::CallbackInfo &info);
+	Napi::Value RenameAttribute(const Napi::CallbackInfo &info);
+	Napi::Value DeleteAttribute(const Napi::CallbackInfo &info);
+	Napi::Value GetName(const Napi::CallbackInfo &info);
+	Napi::Value  SetName(const Napi::CallbackInfo &info);
+	Napi::Value GetEndiannes(const Napi::CallbackInfo &info);
+	Napi::Value  SetEndiannes(const Napi::CallbackInfo &info);
+	Napi::Value GetChecksumMode(const Napi::CallbackInfo &info);
+	Napi::Value  SetChecksumMode(const Napi::CallbackInfo &info);
+	Napi::Value GetChunkMode(const Napi::CallbackInfo &info);
+	Napi::Value  SetChunkMode(const Napi::CallbackInfo &info);
+	Napi::Value GetChunkSizes(const Napi::CallbackInfo &info);
+	Napi::Value  SetChunkSizes(const Napi::CallbackInfo &info);
+	Napi::Value GetFillMode(const Napi::CallbackInfo &info);
+	Napi::Value  SetFillMode(const Napi::CallbackInfo &info);
+	Napi::Value GetFillValue(const Napi::CallbackInfo &info);
+	Napi::Value  SetFillValue(const Napi::CallbackInfo &info);
+	// Napi::Value GetCompressionShuffle(const Napi::CallbackInfo &info);
+	// Napi::Value  SetCompressionShuffle(const Napi::CallbackInfo &info);
+	// Napi::Value GetCompressionDeflate(const Napi::CallbackInfo &info);
+	// Napi::Value  SetCompressionDeflate(const Napi::CallbackInfo &info);
+	// Napi::Value GetCompressionLevel(const Napi::CallbackInfo &info);
+	// Napi::Value  SetCompressionLevel(const Napi::CallbackInfo &info);
+	Napi::Value Inspect(const Napi::CallbackInfo &info);
+	static Napi::FunctionReference constructor;
+
+	static const unsigned char type_sizes[];
+	int id;
+	int parent_id;
+	nc_type type;
+	int ndims;
+	std::string name;
+};
 
 } // namespace netcdf4async
 
