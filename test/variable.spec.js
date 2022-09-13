@@ -27,7 +27,7 @@ describe("Variable", function () {
   });
 
   it("should read variable params (hdf5)", async function() {
-    const variable=await expect(file.root.getVariables()).eventually.to.have.property("UTC_time");
+    const variable=await expect(filenew.root.getVariables()).eventually.to.have.property("UTC_time");
     expect(variable).to.have.property("UTC_time");
     expect(variable.inspect()).to.be.equal('[Variable UTC_time, type string, 1 dimension(s)]')
     expect(variable.name).eventually.to.be.equal('UTC_time')
