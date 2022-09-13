@@ -119,6 +119,7 @@ class Group : public Napi::ObjectWrap<Group> {
 	Napi::Value GetSubgroup(const Napi::CallbackInfo &info);
 
 	Napi::Value GetVariables(const Napi::CallbackInfo &info);
+	Napi::Value GetVariable(const Napi::CallbackInfo &info);
 	Napi::Value AddVariable(const Napi::CallbackInfo &info);
 
 	Napi::Value GetDimensions(const Napi::CallbackInfo &info);

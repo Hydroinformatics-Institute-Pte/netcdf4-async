@@ -77,7 +77,9 @@ void Group::Init(Napi::Env env) {
 		        InstanceMethod("addAttribute", &Group::AddAttribute),
 
 		        InstanceMethod("getVariables",&Group::GetVariables),
+		        InstanceMethod("getVariable",&Group::GetVariable),
 				InstanceMethod("addVariable", &Group::AddVariable),
+
 		        InstanceMethod("inspect", &Group::Inspect)
 //                InstanceAccessor<&Group::GetId>("id"),
 			}
@@ -244,6 +246,13 @@ Napi::Value Group::GetVariables(const Napi::CallbackInfo &info) {
 	// return vars;
     return deferred.Promise();
 }
+
+Napi::Value Group::GetVariable(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
 
 Napi::Value Group::GetDimensions(const Napi::CallbackInfo &info) {
 	bool unlimited=false;

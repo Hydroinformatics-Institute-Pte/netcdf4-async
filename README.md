@@ -188,6 +188,7 @@ From original documentation:
     * `setName(name)`: Rename group
     * `getPath()` : Resolve promise to full name (path in file)
     * `getVariables()` : Resolve to associative array of variables in group
+    * `getVariable(name)` : Resolve to existing variable
     * `addVariable(name,type,dimensions)`: Added variable to group. Resolves to instance of `Variable`.
         * Parameters:
             * `name`: Variable name
@@ -243,7 +244,7 @@ From original documentation:
     * `renameAttribute(oldName,newName)`: Rename attribute
     * `deleteAttribute(name)`: Delete attribute
     * `getSubrgroups(..)` : Resolve to associative array of subgroups of group
-    * `getSubgroups(name)` : Resolve to subgroup
+    * `getSubgroup(name)` : Resolve to subgroup
     * `addSubgroup(name)` : Resolve to new created subgroup
 
 ### **Variable**
