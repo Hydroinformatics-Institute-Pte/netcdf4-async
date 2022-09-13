@@ -179,10 +179,19 @@ describe("Group", function () {
   
   const testAddAttr=(fileType,type,value,values)=>{
 
-    [
-      [arrTypes[type][1](value)," "] // ,
-//      [values=arrTypes[type][0].prototype?new arrTypes[type][0](values):arrTypes[type][0](values)," array "]
-    ].forEach(([value,scalar])=>{
+    const cases=[
+      [arrTypes[type][1](value)," "]
+    ];
+    if (!isNaN(value)) {
+      if (type.substr(-2)!=='64') {
+        cases.push([BigInt(parseInt(value))," BigInt representation of ",parseInt(value)])
+      }
+      else {
+        cases.push([parseInt(value)," Number representation of ",BigInt(value)])
+      }
+    }
+//  cases.push([values=arrTypes[type][0].prototype?new arrTypes[type][0](values):arrTypes[type][0](values)," array "])
+    cases.forEach(([value,scalar,v1])=>{
       it(`[${fileType}] should add attribute${scalar}type ${type} with value ${value}`,async function() {
         let file=await newFile(fileType==='hdf5'?fixture:fixture1,fileType==='hdf5'?"w":"c");
         if (fileType==='netcdf3') {
@@ -190,13 +199,13 @@ describe("Group", function () {
         }
         await expect(file.root.getAttributes()).eventually.to.not.have.property("root_attr_prop");
         const attr=await expect(file.root.addAttribute("root_attr_prop",type,value)).to.be.fulfilled;
-        expect(attr).deep.almost.equal({"root_attr_prop":{"type":type,"value":value}});
+        expect(attr).deep.almost.equal({"root_attr_prop":{"type":type,"value":v1===undefined?value:v1}});
         expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
         await file.close();
         file = await netcdf4.open(file.name, "r");
         await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop");
-        await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop").to.deep.property("value").to.deep.almost.equal(value);
-        await expect(file.root.getAttributes(true)).eventually.to.have.property("root_attr_prop").to.deep.almost.equal({"type":type,"value":value});
+        await expect(file.root.getAttributes()).eventually.to.have.property("root_attr_prop").to.deep.property("value").to.deep.almost.equal(v1===undefined?value:v1);
+        await expect(file.root.getAttributes(true)).eventually.to.have.property("root_attr_prop").to.deep.almost.equal({"type":type,"value":v1===undefined?value:v1});
       });
     });
 

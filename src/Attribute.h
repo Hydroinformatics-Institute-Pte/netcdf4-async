@@ -81,7 +81,6 @@
 #if NODE_MAJOR_VERSION > 8
 #define BIGINT_TO_ATTR(type)   \
    else if (value.IsBigInt()) {                                        \
-        printf("%s %s\n",value.IsNumber()? "true": "false",value.IsBigInt()? "true": "false");  \
 		attribute_value.len = 1;                                         \
 		type* pv = new type[attribute_value.len];    \
         bool loseless=0;                    \
