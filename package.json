@@ -10,7 +10,7 @@
     "clean": "rm -rf build",
     "clean-all": "rm -rf build node_modules",
     "pretest": "node-gyp build",
-    "test": "mocha"
+    "test": "mocha --exit --recursive=\"./test/*.spec.js\""
   },
   "contributors": [
     "Vasyl Moskalov <mvtm.dn@gmail.com>",

@@ -221,7 +221,7 @@ From original documentation:
                 "attribute_n":value_n
             }
             ```
-            * `asDefined`===false or not set
+            * `asDefined`===true or not set
             ```json
             {
                 "attribute_1":{
@@ -239,10 +239,11 @@ From original documentation:
                 },
             }
             ```
-    * `setAttribute(name,value)`: Set value of attribute
+    * `setAttribute(name,value,type?)`: Set value of attribute
     * `renameAttribute(oldName,newName)`: Rename attribute
     * `deleteAttribute(name)`: Delete attribute
     * `getSubrgroups(..)` : Resolve to associative array of subgroups of group
+    * `getSubgroups(name)` : Resolve to subgroup
     * `addSubgroup(name)` : Resolve to new created subgroup
 
 ### **Variable**
