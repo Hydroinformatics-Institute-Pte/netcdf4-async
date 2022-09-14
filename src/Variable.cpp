@@ -82,9 +82,22 @@ Napi::Value Variable::GetTypeSync(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value Variable::GetName(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();	
+    Napi::Env env = info.Env();
+	Variable *variable = this;
+	auto worker=new NCAsyncWorker<std::string>(
+		env,
+		[id = this->id, parent_id = this->parent_id] (const NCAsyncWorker<std::string>* worker) {
+			char var_name[NC_MAX_NAME + 1];
+			NC_CALL(nc_inq_varname(parent_id, id, var_name));
+			return std::string(var_name);
+		},
+		[variable] (Napi::Env env, std::string result) {
+			variable->set_name(result);
+			return Napi::String::New(env, result);
+		}
+	);
+	worker->Queue();
+    return worker->Deferred().Promise();	
 }
 
 Napi::Value Variable::GetNameSync(const Napi::CallbackInfo &info) {
@@ -92,9 +105,27 @@ Napi::Value Variable::GetNameSync(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value  Variable::SetName(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+	if (info.Length() < 1) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments"));
+		return deferred.Promise();
+	}
+    Napi::Env env = info.Env();
+	Variable *variable =  this;
+	std::string new_name = info[0].As<Napi::String>();
+	auto worker=new NCAsyncWorker<std::string>(
+		env, deferred,
+		[id = this->id, parent_id = this->parent_id, new_name] (const NCAsyncWorker<std::string>* worker) {
+			NC_CALL(nc_rename_var(parent_id, id,  new_name.c_str()));
+			return std::string(new_name);
+		},
+		[variable] (Napi::Env env, std::string result) {
+			variable->set_name(result);
+			return Napi::String::New(env, result);
+		}
+	);
+	worker->Queue();
+    return worker->Deferred().Promise();
 }
 
 Napi::Value Variable::GetDimensions(const Napi::CallbackInfo &info) {
@@ -416,6 +447,11 @@ Napi::Value Variable::ReadStridedSlice(const Napi::CallbackInfo &info) {
 //     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
 //     return deferred.Promise();
 // }
+
+void Variable::set_name(std::string new_name) {
+	this->name = new_name;
+}
+
 
 Napi::Value Variable::Inspect(const Napi::CallbackInfo &info) {
 	return Napi::String::New(info.Env(), 
