@@ -99,7 +99,7 @@ Napi::Value Group::AddAttribute(const Napi::CallbackInfo &info) {
 	std::string name=info[0].As<Napi::String>().ToString();
 	Napi::Env env = info.Env();
 	int id = this->id;
-	return add_attribute(deferred ,env, id, NC_GLOBAL, name, type, info[2]).Promise();
+	return add_attribute(deferred ,env, id, NC_GLOBAL, name, type, info[2]);
 }
 
 Napi::Value Group::AddSubgroup(const Napi::CallbackInfo &info) {

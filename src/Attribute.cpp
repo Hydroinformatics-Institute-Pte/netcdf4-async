@@ -6,87 +6,63 @@
 #include "async.h"
 #include "utils.h"
 #include <node_version.h>
+#include "Macros.h"
 
 namespace netcdf4async {
-union UnionType{
-	int8_t* i8;
-	int16_t* i16;
-	int32_t* i32;
-	float* f;
-	double* d;
-	uint8_t* u8;
-	uint16_t* u16;
-	uint32_t* u32;
-	uint64_t* u64;
-	int64_t* i64;
-	char* s;
-	char** ps;
-	const char* text;
-	void* v;
-};
-struct attr_struct
-{
-	std::string name;
-	int type;
-	size_t len;
-	UnionType value;
-};
-
-
 
 struct NCAttribute_list
 {
-	std::vector<attr_struct> attributes;
+	std::vector<Item> attributes;
 };
 
-Napi::Value attr2value(Napi::Env env,attr_struct *nc_attribute) {
+Napi::Value attr2value(Napi::Env env, Item *nc_item) {
 	Napi::Value value;
 //	printf("Attr %s type %i\n",nc_attribute->name.c_str(),nc_attribute->type);
-	switch (nc_attribute->type) {
+	switch (nc_item->type) {
 		case NC_BYTE:
-				ATTR_TO_VAL(int8_t);
+			ITEM_TO_VAL(int8_t);
 		break;
 		case NC_SHORT:
-			ATTR_TO_VAL(int16_t);
+			ITEM_TO_VAL(int16_t);
 		break;
 		case NC_INT:
-			ATTR_TO_VAL(int32_t);
+			ITEM_TO_VAL(int32_t);
 		break;
 		case NC_FLOAT:
-			ATTR_TO_VAL(float);
+			ITEM_TO_VAL(float);
 		break;
 		case NC_DOUBLE:
-			ATTR_TO_VAL(double);
+			ITEM_TO_VAL(double);
 		break;
 		case NC_UBYTE:
-			ATTR_TO_VAL(uint8_t);
+			ITEM_TO_VAL(uint8_t);
 		break;
 		case NC_USHORT:
-			ATTR_TO_VAL(uint16_t);
+			ITEM_TO_VAL(uint16_t);
 		break;
 		case NC_UINT:
-			ATTR_TO_VAL(uint32_t);
+			ITEM_TO_VAL(uint32_t);
 		break;
 		case NC_UINT64:
-			ATTR_TO_VAL(uint64_t);
+			ITEM_TO_VAL(uint64_t);
 		break;
 		case NC_INT64:
-			ATTR_TO_VAL(int64_t);
+			ITEM_TO_VAL(int64_t);
 		break;
 		case NC_CHAR: 
-			value = Napi::String::New(env, nc_attribute->value.s);
-			delete[] nc_attribute->value.s;
+			value = Napi::String::New(env, nc_item->value.s);
+			delete[] nc_item->value.s;
 		break;
 		case NC_STRING:
-			if (nc_attribute->len == 1) {
-				std::string *s = new std::string(nc_attribute->value.ps[0]);
+			if (nc_item->len == 1) {
+				std::string *s = new std::string(nc_item->value.ps[0]);
 				value = Napi::String::New(env, s->c_str());
 				delete s;
 			}
 			else {
-				Napi::Array result_array = Napi::Array::New(env, nc_attribute->len);
-				for (int i = 0; i < static_cast<int>(nc_attribute->len); i++){
-					std::string *res_str=new std::string(nc_attribute->value.ps[i]);
+				Napi::Array result_array = Napi::Array::New(env, nc_item->len);
+				for (int i = 0; i < static_cast<int>(nc_item->len); i++){
+					std::string *res_str=new std::string(nc_item->value.ps[i]);
 					result_array[i] = Napi::String::New(env, res_str->c_str());
 					delete res_str;
 				}
@@ -115,7 +91,7 @@ Napi::Promise::Deferred get_attributes(Napi::Env env, int parent_id, int var_id,
 			for (int i = 0; i < natts; ++i) {
 				int type;
 				size_t len;
-				attr_struct attribute;
+				Item attribute;
 				NC_CALL(nc_inq_attname(parent_id, var_id, i, name));
 				NC_CALL(nc_inq_attlen(parent_id, var_id, name, &len));
 				NC_CALL(nc_inq_atttype(parent_id, var_id, name, &type));
@@ -197,57 +173,57 @@ Napi::Promise::Deferred get_attributes(Napi::Env env, int parent_id, int var_id,
     return worker->Deferred();
 }
 
-Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::Env env, int parent_id, int var_id,
+Napi::Value add_attribute(Napi::Promise::Deferred deferred , Napi::Env env, int parent_id, int var_id,
     const std::string attribute_name, int type, const Napi::Value &value) {
-		attr_struct attribute_value;
-		attribute_value.name = attribute_name;
-		attribute_value.type = type;
+		Item nc_item;
+		nc_item.name = attribute_name;
+		nc_item.type = type;
 		switch (type) {
 			case NC_BYTE: 
-				VAL_TO_ATTR(int8_t)
+				VAL_TO_ITEM(int8_t)
 				break;
 			case NC_SHORT: 
-				VAL_TO_ATTR(int16_t)
+				VAL_TO_ITEM(int16_t)
 				break;
 			case NC_INT: 
-				VAL_TO_ATTR(int32_t)
+				VAL_TO_ITEM(int32_t)
 				break;
 			case NC_FLOAT: 
-				VAL_TO_ATTR(float)
+				VAL_TO_ITEM(float)
 				break;
 			case NC_DOUBLE: 
-				VAL_TO_ATTR(double)
+				VAL_TO_ITEM(double)
 				break;
 			case NC_UBYTE: 
-				VAL_TO_ATTR(uint8_t)
+				VAL_TO_ITEM(uint8_t)
 				break;
 			case NC_USHORT: 
-				VAL_TO_ATTR(uint16_t)
+				VAL_TO_ITEM(uint16_t)
 				break;
 			case NC_UINT: 
-				VAL_TO_ATTR(uint32_t)
+				VAL_TO_ITEM(uint32_t)
 				break;
 #if NODE_MAJOR_VERSION > 8
 			case NC_UINT64: 
-				VAL_TO_ATTR(uint64_t)
+				VAL_TO_ITEM(uint64_t)
 				break;
 			case NC_INT64: 
-				VAL_TO_ATTR(int64_t)
+				VAL_TO_ITEM(int64_t)
 				break;
 #endif
 			case NC_CHAR:{
 				std::string v = value.As<Napi::String>().ToString();
-				attribute_value.value.s = new char[v.length()+1];
-				attribute_value.value.s[v.length()] = 0;
-				strcpy(attribute_value.value.s, v.c_str());
-				attribute_value.len = v.length();
+				nc_item.value.s = new char[v.length()+1];
+				nc_item.value.s[v.length()] = 0;
+				strcpy(nc_item.value.s, v.c_str());
+				nc_item.len = v.length();
 			} break;
 			case NC_STRING: {
 				std::vector<std::unique_ptr<const std::string > >* string = new std::vector<std::unique_ptr<const std::string > >() ;
 				std::vector<const char*>* cstrings = new std::vector<const char*>();
 				if(value.IsArray()){
 					auto arr = value.As<Napi::Array>();
-					attribute_value.len = static_cast<int>(arr.Length());
+					nc_item.len = static_cast<int>(arr.Length());
 					for (int i =0; i<static_cast<int>(arr.Length()); i++){
 						Napi::Value napiV=arr[i];
 						string->push_back(std::make_unique<std::string>(std::string(napiV.ToString().Utf8Value())));
@@ -256,34 +232,34 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 				} else {
 					string->push_back(std::make_unique<std::string>(std::string(value.As<Napi::String>().ToString().Utf8Value())));
 					cstrings->push_back(string->at(0)->c_str());
-					attribute_value.len = 1;
+					nc_item.len = 1;
 				}
-				attribute_value.value.v = cstrings->data();
+				nc_item.value.v = cstrings->data();
 				
 			} break;
 			default:{
 				deferred.Reject(Napi::String::New(env, "Variable type not supported yet"));
-				return deferred;
+				return deferred.Promise();
 			}
 		}
 
-		auto worker = new NCAsyncWorker<attr_struct>(
+		auto worker = new NCAsyncWorker<Item>(
 		env, deferred,
-		[parent_id, var_id, attribute_value] (const NCAsyncWorker<attr_struct>* worker) {
+		[parent_id, var_id, nc_item] (const NCAsyncWorker<Item>* worker) {
 			
-			if(attribute_value.type == NC_CHAR ) {
-				std::string text = std::string(attribute_value.value.s);
-				NC_CALL(nc_put_att_text(parent_id, var_id, attribute_value.name.c_str(),
+			if(nc_item.type == NC_CHAR ) {
+				std::string text = std::string(nc_item.value.s);
+				NC_CALL(nc_put_att_text(parent_id, var_id, nc_item.name.c_str(),
 					text.length(), text.c_str()));
-			} if(attribute_value.type == NC_STRING ) {
-				NC_CALL(nc_put_att(parent_id, var_id,attribute_value.name.c_str(), attribute_value.type, attribute_value.len, attribute_value.value.v));
+			} if(nc_item.type == NC_STRING ) {
+				NC_CALL(nc_put_att(parent_id, var_id,nc_item.name.c_str(), nc_item.type, nc_item.len, nc_item.value.v));
 			} else {
-				NC_CALL(nc_put_att(parent_id, var_id,attribute_value.name.c_str(), attribute_value.type, attribute_value.len, attribute_value.value.v));
+				NC_CALL(nc_put_att(parent_id, var_id,nc_item.name.c_str(), nc_item.type, nc_item.len, nc_item.value.v));
 				
 			}
-			return attribute_value;
+			return nc_item;
 		},
-		[] (Napi::Env env, attr_struct result) {
+		[] (Napi::Env env, Item result) {
 			Napi::Value value=attr2value(env,&result);
 			
 			Napi::Object types_value = Napi::Object::New(env);
@@ -295,7 +271,7 @@ Napi::Promise::Deferred add_attribute(Napi::Promise::Deferred deferred , Napi::E
 		}
 	);
 	worker->Queue();
-	return worker->Deferred();
+	return worker->Deferred().Promise();
 	}
 
 

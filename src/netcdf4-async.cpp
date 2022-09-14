@@ -77,7 +77,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
 	Group::Init(env);
 //	Dimension::Init(env, exports);
 //	Attribute::Init(env, exports);
-//	Variable::Init(env, exports);
+	Variable::Init(env);
 	return exports;
 }
 
