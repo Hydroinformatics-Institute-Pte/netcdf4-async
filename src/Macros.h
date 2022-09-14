@@ -4,6 +4,7 @@
 
 #include <string.h>
 #include <stdexcept>
+#include <node_version.h>
 
 #define NAPI_uint8_t Number
 #define NAPI_uint16_t Number
@@ -59,6 +60,7 @@
 #define NAPI_Union_float f
 #define NAPI_Union_uint64_t u64
 #define NAPI_Union_int64_t i64
+#define NAPI_Union_char s
 
 
 #define NAPI_Big_uint8_t Uint64Value
@@ -78,6 +80,9 @@
 #define NAPI_Big(v) NAPI_Big_##v
 #define NAPI_Attr(v) NAPI_Attr_##v
 #define NAPI_Union(v) NAPI_Union_##v
+
+#define TYPED_VALUE(name,type,size)  \
+        name.NAPI_Union(type)=new type[size];
 
 #define ITEM_TO_VAL(type)                                          \
         if (nc_item->len == 1) {                              \
@@ -154,29 +159,30 @@
         );                                                               \
         return deferred.Promise();                                                 \
     }
+namespace netcdf4async {
 
-union UnionType{
-	int8_t* i8;
-	int16_t* i16;
-	int32_t* i32;
-	float* f;
-	double* d;
-	uint8_t* u8;
-	uint16_t* u16;
-	uint32_t* u32;
-	uint64_t* u64;
-	int64_t* i64;
-	char* s;
-	char** ps;
-	const char* text;
-	void* v;
-};
-struct Item
-{
-	std::string name;
-	int type;
-	size_t len;
-	UnionType value;
-};
-
+    union UnionType{
+        int8_t* i8;
+        int16_t* i16;
+        int32_t* i32;
+        float* f;
+        double* d;
+        uint8_t* u8;
+        uint16_t* u16;
+        uint32_t* u32;
+        uint64_t* u64;
+        int64_t* i64;
+        char* s;
+        char** ps;
+        const char* text;
+        void* v;
+    };
+    struct Item
+    {
+        std::string name;
+        int type;
+        size_t len;
+        UnionType value;
+    };
+}
 #endif

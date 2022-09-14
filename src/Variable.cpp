@@ -1,6 +1,7 @@
 #include <iostream>
 #include <netcdf.h>
 #include <string>
+#include <node_version.h>
 #include "netcdf4-async.h"
 #include "async.h"
 #include "Attribute.h"
@@ -8,37 +9,6 @@
 
 namespace netcdf4async {
 
-/*
-const unsigned char Variable::type_sizes[] = {
-	0, // NC_NAT // unknown type
-	1, // NC_BYTE
-	1, // NC_CHAR
-	2, // NC_SHORT
-	4, // NC_INT / NC_LONG
-	4, // NC_FLOAT
-	8, // NC_DOUBLE
-	1, // NC_UBYTE
-	2, // NC_USHORT
-	4  // NC_UINT
-};
-*/
-
-union UnionType{
-	int8_t* i8;
-	int16_t* i16;
-	int32_t* i32;
-	float* f;
-	double* d;
-	uint8_t* u8;
-	uint16_t* u16;
-	uint32_t* u32;
-	uint64_t* u64;
-	int64_t* i64;
-	char* s;
-	char** ps;
-	const char* text;
-	void* v;
-};
 
 Napi::FunctionReference Variable::constructor;
 
@@ -114,65 +84,8 @@ Napi::Value Variable::GetName(const Napi::CallbackInfo &info) {
     return deferred.Promise();	
 }
 
-
-Napi::Value Variable::WriteSlice(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value Variable::Read(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value Variable::ReadSlice(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value Variable::ReadStridedSlice(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value Variable::AddAttribute(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value Variable::GetDimensions(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value Variable::GetAttributes(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value Variable::SetAttribute(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value Variable::RenameAttribute(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value Variable::DeleteAttribute(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+Napi::Value Variable::GetNameSync(const Napi::CallbackInfo &info) {
+    return Napi::String::New(info.Env(),this->name.c_str());
 }
 
 Napi::Value  Variable::SetName(const Napi::CallbackInfo &info) {
@@ -181,25 +94,7 @@ Napi::Value  Variable::SetName(const Napi::CallbackInfo &info) {
     return deferred.Promise();
 }
 
-Napi::Value Variable::GetEndiannes(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value Variable::SetEndiannes(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value Variable::GetChecksumMode(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value  Variable::SetChecksumMode(const Napi::CallbackInfo &info) {
+Napi::Value Variable::GetDimensions(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
     return deferred.Promise();
@@ -215,47 +110,44 @@ Napi::Value Variable::GetFill(const Napi::CallbackInfo &info) {
 		[id, parent_id, type] (const NCAsyncWorker<UnionType>* worker) {
             UnionType result;
             switch (type) {
-	        case NC_BYTE: {
-		        result.i8 = new int8_t[1];
-		    } break;
-	        case NC_CHAR: {
-                result.s = new char[2];
+	        case NC_BYTE: 
+		        TYPED_VALUE(result,int8_t,1)
+		    break;
+	        case NC_CHAR: 
+		        TYPED_VALUE(result,char,2)
 		        result.s[1] = 0; 
-	        } break;
-	        case NC_SHORT: { 
-		        result.i16 = new int16_t[1];
-	        } break;
-	        case NC_INT: {
-		        result.i32 = new int32_t[1];
-		    } break;
-	        case NC_FLOAT: {
-		        result.f = new float[1];
-	        } break;
-	        case NC_DOUBLE: {
-		        result.d = new double[1];
-	        } break;
-	        case NC_UBYTE: {
-		        result.u8 = new uint8_t[1];
-		    } break;
-	        case NC_USHORT: {
-		        result.u16 = new uint16_t[1];
-	        } break;
-	        case NC_UINT: {
-		        result.u32 = new uint32_t[1];
-	        } break;
+	        break;
+	        case NC_SHORT: 
+		        TYPED_VALUE(result,int16_t,1)
+	        break;
+	        case NC_INT:
+		        TYPED_VALUE(result,int32_t,1)
+		    break;
+	        case NC_FLOAT: 
+		        TYPED_VALUE(result,float,1)
+			break;
+	        case NC_DOUBLE:
+		        TYPED_VALUE(result,double,1)
+			break;
+	        case NC_UBYTE: 
+		        TYPED_VALUE(result,uint8_t,1)
+		    break;
+	        case NC_USHORT: 
+		        TYPED_VALUE(result,uint16_t,1)
+	        break;
+	        case NC_UINT:
+		        TYPED_VALUE(result,uint32_t,1)
+		    break;
 #if NODE_MAJOR_VERSION > 9
-	        case NC_UINT64:{
-		        result.u64 = new uint64_t[1];
-	        }
-	        break;
-	        case NC_INT64:{
-		        result.i64 = new int64_t[1];
-        	}
-	        break;
+	        case NC_UINT64:
+		        TYPED_VALUE(result,uint64_t,1)
+		    break;
+	        case NC_INT64:
+		        TYPED_VALUE(result,int64_t,1)
+		    break;
 #endif
-	        case NC_STRING:{
+	        case NC_STRING:
 		        result.ps = new char *[1];
-		    }
 	        break;
 	        default:
             	throw std::runtime_error("Variable type not supported yet");
@@ -364,6 +256,127 @@ Napi::Value  Variable::SetFill(const Napi::CallbackInfo &info) {
     
     return deferred.Promise();
 }
+
+
+Napi::Value Variable::GetChunked(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+Napi::Value  Variable::SetChunked(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+Napi::Value Variable::GetDeflateInfo(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+Napi::Value  Variable::SetDeflateInfo(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+Napi::Value Variable::GetEndiannes(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+Napi::Value Variable::SetEndiannes(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+Napi::Value Variable::GetChecksumMode(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+Napi::Value  Variable::SetChecksumMode(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+Napi::Value Variable::GetAttributes(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+Napi::Value Variable::AddAttribute(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+
+Napi::Value Variable::SetAttribute(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+Napi::Value Variable::RenameAttribute(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+Napi::Value Variable::DeleteAttribute(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+Napi::Value Variable::Write(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+Napi::Value Variable::WriteSlice(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+Napi::Value Variable::WriteStridedSlice(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+
+Napi::Value Variable::Read(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+Napi::Value Variable::ReadSlice(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+Napi::Value Variable::ReadStridedSlice(const Napi::CallbackInfo &info) {
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+    return deferred.Promise();
+}
+
+
+
+
 
 // Napi::Value Variable::GetCompressionShuffle(const Napi::CallbackInfo &info) {
 //     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
