@@ -32,7 +32,6 @@ describe.only("Variable", function () {
     expect(variable.name).to.be.equal('UTC_time')
     await expect(variable.getName()).eventually.to.be.equal('UTC_time')
     expect(variable.type).to.be.equal('string')
-    await expect(variable.getType()).eventually.to.be.equal('string')
     await expect(variable.getEndianness()).eventually.to.be.equal('native')
     const attributes=await expect(variable.getAttriubtes()).to.be.fulfilled;
     expect(attributes).to.have.property('name')
@@ -46,7 +45,6 @@ describe.only("Variable", function () {
     expect(variable.name).to.be.equal('var1')
     await expect(variable.getName()).eventually.to.be.equal('var1')
     expect(variable.type).to.be.equal('float')
-    await expect(variable.getType()).eventually.to.be.equal('float')
 
     await expect(variable.getAttributes()).eventually.to.be.empty
     await expect(variable.getDimensions()).eventually.to.be.equal({"dim1":10000});
