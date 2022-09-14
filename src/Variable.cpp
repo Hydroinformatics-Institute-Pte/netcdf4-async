@@ -145,10 +145,6 @@ Napi::Value Variable::AddAttribute(const Napi::CallbackInfo &info) {
     return deferred.Promise();
 }
 
-Napi::Value Variable::GetId(const Napi::CallbackInfo &info) {
-	return Napi::Number::New(info.Env(), this->id);
-}
-
 Napi::Value Variable::GetDimensions(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
@@ -174,18 +170,6 @@ Napi::Value Variable::RenameAttribute(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value Variable::DeleteAttribute(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value Variable::GetType(const Napi::CallbackInfo &info) {
-	const char *res=NC_TYPES(this->type);
-	return Napi::String::New(info.Env(),res);
-
-}
-
-Napi::Value Variable::GetName(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
     return deferred.Promise();
@@ -221,43 +205,7 @@ Napi::Value  Variable::SetChecksumMode(const Napi::CallbackInfo &info) {
     return deferred.Promise();
 }
 
-Napi::Value Variable::GetChunkMode(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value  Variable::SetChunkMode(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value Variable::GetChunkSizes(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value  Variable::SetChunkSizes(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value Variable::GetFillMode(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value  Variable::SetFillMode(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
-Napi::Value Variable::GetFillValue(const Napi::CallbackInfo &info) {
+Napi::Value Variable::GetFill(const Napi::CallbackInfo &info) {
     Napi::Env env = info.Env();
     int id = this->id;
     int parent_id = this->parent_id;
@@ -324,7 +272,7 @@ Napi::Value Variable::GetFillValue(const Napi::CallbackInfo &info) {
     return worker->Deferred().Promise();
 }
 
-Napi::Value  Variable::SetFillValue(const Napi::CallbackInfo &info) {
+Napi::Value  Variable::SetFill(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
     Napi::Env env = info.Env();
 	Napi::Value value = info[0];
