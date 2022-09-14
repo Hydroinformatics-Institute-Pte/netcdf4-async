@@ -99,7 +99,7 @@ Napi::Value Group::AddAttribute(const Napi::CallbackInfo &info) {
 	std::string name=info[0].As<Napi::String>().ToString();
 	Napi::Env env = info.Env();
 	int id = this->id;
-	return add_attribute(deferred ,env, id, NC_GLOBAL, name, type, info[2]);
+	return add_attribute(env, deferred, id, NC_GLOBAL, name, type, info[2]);
 }
 
 Napi::Value Group::AddSubgroup(const Napi::CallbackInfo &info) {
@@ -228,12 +228,11 @@ Napi::Value Group::GetVariables(const Napi::CallbackInfo &info) {
 
 	struct VariableInfo{
 		int var_id;
-		int parent_d;
+		int parent_id;
 		std::string name;
 		nc_type type;
 		int ndims;
 	};
-
 	auto worker=new NCAsyncWorker<std::vector<VariableInfo>>(
 		env,
 		[parent_id=this->id] (const NCAsyncWorker<std::vector<VariableInfo>>* worker) {
@@ -245,9 +244,9 @@ Napi::Value Group::GetVariables(const Napi::CallbackInfo &info) {
 			for(int i=0; i<nvars; i++){
 				VariableInfo varInfo;
 				varInfo.var_id = var_ids[i];
-				varInfo.parent_d = parent_id;
+				varInfo.parent_id = parent_id;
 				char varName[NC_MAX_NAME + 1];
-				NC_CALL(nc_inq_var(varInfo.parent_d, varInfo.var_id, varName, &varInfo.type, &varInfo.ndims, NULL, NULL));
+				NC_CALL(nc_inq_var(varInfo.parent_id, varInfo.var_id, varName, &varInfo.type, &varInfo.ndims, NULL, NULL));
 				varInfo.name = std::string(varName);
 				variables.push_back(varInfo);
 			}
@@ -258,7 +257,7 @@ Napi::Value Group::GetVariables(const Napi::CallbackInfo &info) {
 			Napi::Object vars = Napi::Object::New(env);	
 			for (auto var = result.begin(); var < result.end(); ++var) {
 				Napi::Object varObj = Variable::Build(env, var->var_id,
-					var->parent_d, var->name, var->type, var->ndims);
+					var->parent_id, var->name, var->type, var->ndims);
 		 		vars.Set(var->name, varObj);
 	 		}
 			return vars;

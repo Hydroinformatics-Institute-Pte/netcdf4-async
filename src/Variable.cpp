@@ -397,15 +397,29 @@ Napi::Value  Variable::SetChecksumMode(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value Variable::GetAttributes(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+   bool return_type = true;
+	if(info.Length() >0) {
+		return_type = info[0].As<Napi::Boolean>();
+	}
+	Napi::Env env = info.Env();
+	int id = this->id;
+	int parent_id = this->parent_id;
+ 	return netcdf4async::get_attributes(env, parent_id, id, return_type).Promise();
 }
 
 Napi::Value Variable::AddAttribute(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+   Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+	if (info.Length() != static_cast<size_t>(3)) {
+		deferred.Reject(Napi::String::New(info.Env(),"Not all parameters from name,type,value bound"));
+		return deferred.Promise();
+	}
+	std::string type_str=info[1].As<Napi::String>().ToString();
+	int type=get_type(type_str);
+	std::string name=info[0].As<Napi::String>().ToString();
+	Napi::Env env = info.Env();
+	int id = this->id;
+	int parent_id = this->parent_id;
+	return add_attribute(env, deferred, parent_id, id, name, type, info[2]);
 }
 
 
@@ -416,15 +430,26 @@ Napi::Value Variable::SetAttribute(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value Variable::RenameAttribute(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    Napi::Env env =  info.Env();
+	if (info.Length() <2) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments"));
+		return deferred.Promise();
+	}
+	std::string old_attribute_name = info[0].As<Napi::String>().Utf8Value();
+	std::string new_attribute_name = info[0].As<Napi::String>().Utf8Value();
+    return rename_attribute(env, deferred, this->parent_id, this->id, old_attribute_name, new_attribute_name).Promise();
 }
 
 Napi::Value Variable::DeleteAttribute(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    Napi::Env env =  info.Env();
+	if (info.Length() <1) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments"));
+		return deferred.Promise();
+	}
+	std::string attribute_name = info[0].As<Napi::String>().Utf8Value();
+    return delete_attribute(env, deferred, this->parent_id, this->id, attribute_name).Promise();
 }
 
 Napi::Value Variable::Write(const Napi::CallbackInfo &info) {

@@ -33,9 +33,10 @@ describe.only("Variable", function () {
     await expect(variable.getName()).eventually.to.be.equal('UTC_time')
     expect(variable.type).to.be.equal('string')
     await expect(variable.getEndianness()).eventually.to.be.equal('native')
-    const attributes=await expect(variable.getAttriubtes()).to.be.fulfilled;
+    const attributes=await expect(variable.getAttributes()).to.be.fulfilled;
     expect(attributes).to.have.property('name')
     expect(attributes).to.have.property('unit')
+    console.log("getDimension")
     await expect(variable.getDimensions()).eventually.to.be.equal({"recNum":74});
   });
 
@@ -47,6 +48,7 @@ describe.only("Variable", function () {
     expect(variable.type).to.be.equal('float')
 
     await expect(variable.getAttributes()).eventually.to.be.empty
+    console.log("getDimension")
     await expect(variable.getDimensions()).eventually.to.be.equal({"dim1":10000});
   });
 
