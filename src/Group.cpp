@@ -224,27 +224,49 @@ Napi::Value Group::GetId(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value Group::GetVariables(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-	// int nvars;
-	// NC_CALL(nc_inq_varids(this->id, &nvars, NULL));
-	// int *var_ids = new int[nvars];
-	// NC_CALL(nc_inq_varids(this->id, NULL, var_ids));
+    Napi::Env env = info.Env();
 
-	// Napi::Object vars = Napi::Object::New(info.Env());
+	struct VariableInfo{
+		int var_id;
+		int parent_d;
+		std::string name;
+		nc_type type;
+		int ndims;
+	};
 
-	// char name[NC_MAX_NAME + 1];
-	// for (int i = 0; i < nvars; ++i) {
-	// 	Napi::Object var = Variable::Build(info.Env(), var_ids[i], this->id);
-
-	// 	int retval = nc_inq_varname(this->id, var_ids[i], name);
-	// 	if (retval == NC_NOERR) {
-	// 		vars.Set(name, var);
-	// 	}
-	// }
-	// delete[] var_ids;
-	// return vars;
-    return deferred.Promise();
+	auto worker=new NCAsyncWorker<std::vector<VariableInfo>>(
+		env,
+		[parent_id=this->id] (const NCAsyncWorker<std::vector<VariableInfo>>* worker) {
+			int nvars;
+			NC_CALL(nc_inq_varids(parent_id, &nvars, NULL));
+			int *var_ids = new int[nvars];
+			NC_CALL(nc_inq_varids(parent_id, NULL, var_ids));
+			std::vector<VariableInfo> variables;
+			for(int i=0; i<nvars; i++){
+				VariableInfo varInfo;
+				varInfo.var_id = var_ids[i];
+				varInfo.parent_d = parent_id;
+				char varName[NC_MAX_NAME + 1];
+				NC_CALL(nc_inq_var(varInfo.parent_d, varInfo.var_id, varName, &varInfo.type, &varInfo.ndims, NULL, NULL));
+				varInfo.name = std::string(varName);
+				variables.push_back(varInfo);
+			}
+			delete[] var_ids;
+			return variables;
+		},
+		[] (Napi::Env env,std::vector<VariableInfo> result) {
+			Napi::Object vars = Napi::Object::New(env);	
+			for (auto var = result.begin(); var < result.end(); ++var) {
+				Napi::Object varObj = Variable::Build(env, var->var_id,
+					var->parent_d, var->name, var->type, var->ndims);
+		 		vars.Set(var->name, varObj);
+	 		}
+			return vars;
+		}
+	);
+	worker->Queue();
+	
+    return worker->Deferred().Promise();
 }
 
 Napi::Value Group::GetVariable(const Napi::CallbackInfo &info) {

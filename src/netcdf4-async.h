@@ -138,8 +138,8 @@ class Variable : public Napi::ObjectWrap<Variable> {
   public:
 	static void Init(Napi::Env env);
 	Variable(const Napi::CallbackInfo &info);
-	static Napi::Object Build(Napi::Env env, int id, int parent_id);
-
+	static Napi::Object Build(Napi::Env env, int id, int parent_id, std::string name, nc_type type, int ndims);
+	
   private:
 
 	Napi::Value GetName(const Napi::CallbackInfo &info);

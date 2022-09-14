@@ -12,21 +12,24 @@ namespace netcdf4async {
 
 Napi::FunctionReference Variable::constructor;
 
-Napi::Object Variable::Build(Napi::Env env, int id, int parent_id) {
-	return constructor.New({Napi::Number::New(env, id), Napi::Number::New(env, parent_id)});
+Napi::Object Variable::Build(Napi::Env env, int id, int parent_id, std::string name, nc_type type, int ndims) {
+	return constructor.New({Napi::Number::New(env, id),
+		Napi::Number::New(env, parent_id),
+		Napi::String::New(env, name),
+		Napi::Number::New(env, type),
+		Napi::Number::New(env, ndims)});
 }
 
 Variable::Variable(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Variable>(info) {
-	// if (info.Length() < 2) {
-	// 	Napi::TypeError::New(info.Env(), "Wrong number of arguments").ThrowAsJavaScriptException();
-	// 	return;
-	// }
-
-	// char varName[NC_MAX_NAME + 1];
-	// id = info[0].As<Napi::Number>().Int32Value();
-	// parent_id = info[1].As<Napi::Number>().Int32Value();
-	// NC_CALL_VOID(nc_inq_var(parent_id, id, varName, &type, &ndims, NULL, NULL));
-	// name = std::string(varName);
+	if (info.Length() < 5) {
+		Napi::TypeError::New(info.Env(), "Wrong number of arguments").ThrowAsJavaScriptException();
+		return;
+	}
+	this->id = id;
+	this->parent_id = parent_id;
+	this->name = name;
+	this->type = type;
+	this->ndims = ndims;
 }
 
 void Variable::Init(Napi::Env env) {
