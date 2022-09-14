@@ -159,8 +159,8 @@ class Variable : public Napi::ObjectWrap<Variable> {
 	Napi::Value GetDeflateInfo(const Napi::CallbackInfo &info);
 	Napi::Value SetDeflateInfo(const Napi::CallbackInfo &info);
 
-	Napi::Value GetEndiannes(const Napi::CallbackInfo &info);
-	Napi::Value SetEndiannes(const Napi::CallbackInfo &info);
+	Napi::Value GetEndianness(const Napi::CallbackInfo &info);
+	Napi::Value SetEndianness(const Napi::CallbackInfo &info);
 	Napi::Value GetChecksumMode(const Napi::CallbackInfo &info);
 	Napi::Value SetChecksumMode(const Napi::CallbackInfo &info);
 

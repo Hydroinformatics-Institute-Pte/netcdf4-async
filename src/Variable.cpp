@@ -55,8 +55,8 @@ void Variable::Init(Napi::Env env) {
                 InstanceMethod("setChunked", &Variable::SetChunked),
                 InstanceMethod("getDeflateInfo", &Variable::GetDeflateInfo),
                 InstanceMethod("setDeflateInfo", &Variable::SetDeflateInfo),
-                InstanceMethod("getEndiannes", &Variable::GetEndiannes),
-                InstanceMethod("setEndiannes", &Variable::SetEndiannes),
+                InstanceMethod("getEndianness", &Variable::GetEndianness),
+                InstanceMethod("setEndianness", &Variable::SetEndianness),
                 InstanceMethod("getChecksumMode", &Variable::GetChecksumMode),
                 InstanceMethod("setChecksumMode", &Variable::SetChecksumMode),
                 InstanceMethod("getAttributes", &Variable::GetAttributes),
@@ -112,7 +112,7 @@ Napi::Value  Variable::SetName(const Napi::CallbackInfo &info) {
 	}
     Napi::Env env = info.Env();
 	Variable *variable =  this;
-	std::string new_name = info[0].As<Napi::String>();
+	std::string new_name = info[0].As<Napi::String>().Utf8Value();
 	auto worker=new NCAsyncWorker<std::string>(
 		env, deferred,
 		[id = this->id, parent_id = this->parent_id, new_name] (const NCAsyncWorker<std::string>* worker) {
@@ -316,17 +316,73 @@ Napi::Value  Variable::SetDeflateInfo(const Napi::CallbackInfo &info) {
     return deferred.Promise();
 }
 
-Napi::Value Variable::GetEndiannes(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+Napi::Value Variable::GetEndianness(const Napi::CallbackInfo &info) {
+    Napi::Env env = info.Env();
+	auto worker=new NCAsyncWorker<int>(
+		env,
+		[id=this->id, parent_id=this->parent_id] (const NCAsyncWorker<int>* worker) {
+            int v;
+			NC_CALL(nc_inq_var_endian(parent_id, id, &v));
+		    return v;
+		},
+		[] (Napi::Env env, int result) {
+			const char *res;
+            switch (result) {
+			case NC_ENDIAN_LITTLE:
+				res = "little";
+				break;
+			case NC_ENDIAN_BIG:
+				res = "big";
+				break;
+			case NC_ENDIAN_NATIVE:
+				res = "native";
+				break;
+			default:
+				res = "unknown";
+				break;
+			}
+			return Napi::String::New(env, res);
+		}
+		
+	);
+	worker->Queue();
+	
+    return worker->Deferred().Promise();
 }
 
-Napi::Value Variable::SetEndiannes(const Napi::CallbackInfo &info) {
+
+Napi::Value Variable::SetEndianness(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Env env = info.Env();
+	if (info.Length() < 1) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments"));
+		return deferred.Promise();
+	}
+    std::string arg = info[0].As<Napi::String>().Utf8Value();
+	int v;
+	if (arg == "little") {
+		v = NC_ENDIAN_LITTLE;
+	} else if (arg == "big") {
+		v = NC_ENDIAN_BIG;
+	} else if (arg == "native") {
+		v = NC_ENDIAN_NATIVE;
+	} else {
+		deferred.Reject(Napi::String::New(info.Env(),"Unknown value"));
+		return deferred.Promise();
+	}
+	auto worker=new NCAsyncWorker<int>(
+		env, deferred,
+		[id=this->id, parent_id=this->parent_id, v](const NCAsyncWorker<int>* worker) {
+            NC_CALL(nc_def_var_endian(parent_id,id,v));
+		    return v;
+		},
+		[] (Napi::Env env, int result) {
+			return Napi::Number::New(env, result);
+		});
+	worker->Queue();
+    return worker->Deferred().Promise();
 }
+
 
 Napi::Value Variable::GetChecksumMode(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
