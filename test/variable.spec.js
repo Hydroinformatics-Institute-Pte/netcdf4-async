@@ -14,7 +14,7 @@ const fixture1 = join(__dirname, "test_hgroups.nc");
 const {newFile,closeAll,arrTypes}=require("./utils");
 
 
-describe("Variable", function () {
+describe.only("Variable", function () {
   let fileold,filenew;
 
   beforeEach(async function () {
@@ -28,9 +28,8 @@ describe("Variable", function () {
 
   it("should read variable params (hdf5)", async function() {
     const variable=await expect(filenew.root.getVariables()).eventually.to.have.property("UTC_time");
-    expect(variable).to.have.property("UTC_time");
     expect(variable.inspect()).to.be.equal('[Variable UTC_time, type string, 1 dimension(s)]')
-    expect(variable.name).eventually.to.be.equal('UTC_time')
+    expect(variable.name).to.be.equal('UTC_time')
     await expect(variable.getName()).eventually.to.be.equal('UTC_time')
     expect(variable.type).to.be.equal('string')
     await expect(variable.getType()).eventually.to.be.equal('string')

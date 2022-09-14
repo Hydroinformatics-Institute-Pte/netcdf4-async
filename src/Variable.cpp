@@ -25,11 +25,11 @@ Variable::Variable(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Variable>(
 		Napi::TypeError::New(info.Env(), "Wrong number of arguments").ThrowAsJavaScriptException();
 		return;
 	}
-	this->id = id;
-	this->parent_id = parent_id;
-	this->name = name;
-	this->type = type;
-	this->ndims = ndims;
+	this->id = info[0].As<Napi::Number>().Int32Value();
+	this->parent_id = info[1].As<Napi::Number>().Int32Value();
+	this->name = info[2].As<Napi::String>().Utf8Value();
+	this->type = info[3].As<Napi::Number>().Int32Value();
+	this->ndims = info[4].As<Napi::Number>().Int32Value();
 }
 
 void Variable::Init(Napi::Env env) {
