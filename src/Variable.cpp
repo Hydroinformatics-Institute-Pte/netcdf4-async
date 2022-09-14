@@ -8,6 +8,7 @@
 
 namespace netcdf4async {
 
+/*
 const unsigned char Variable::type_sizes[] = {
 	0, // NC_NAT // unknown type
 	1, // NC_BYTE
@@ -20,6 +21,7 @@ const unsigned char Variable::type_sizes[] = {
 	2, // NC_USHORT
 	4  // NC_UINT
 };
+*/
 
 union UnionType{
 	int8_t* i8;
@@ -74,33 +76,25 @@ void Variable::Init(Napi::Env env) {
                 InstanceMethod("getName", &Variable::GetName),
                 InstanceMethod("setName", &Variable::SetName),
                 InstanceMethod("getDimensions", &Variable::GetDimensions),
-                InstanceMethod("getFill", &Variable::GetFillMode),
-                InstanceMethod("setFill", &Variable::SetFillMode),
-                InstanceMethod("getChunked", &Variable::GetChunkMode),
-                InstanceMethod("setChunked", &Variable::SetChunkMode),
-                // InstanceMethod("getDeflateInfo", &Variable::GetDeflateInfo),
-                // InstanceMethod("setDeflateInfo", &Variable::SetDeflateInfo),
+                InstanceMethod("getFill", &Variable::GetFill),
+                InstanceMethod("setFill", &Variable::SetFill),
+                InstanceMethod("getChunked", &Variable::GetChunked),
+                InstanceMethod("setChunked", &Variable::SetChunked),
+                InstanceMethod("getDeflateInfo", &Variable::GetDeflateInfo),
+                InstanceMethod("setDeflateInfo", &Variable::SetDeflateInfo),
                 InstanceMethod("getEndiannes", &Variable::GetEndiannes),
                 InstanceMethod("setEndiannes", &Variable::SetEndiannes),
                 InstanceMethod("getChecksumMode", &Variable::GetChecksumMode),
                 InstanceMethod("setChecksumMode", &Variable::SetChecksumMode),
                 InstanceMethod("getAttributes", &Variable::GetAttributes),
                 InstanceMethod("setAttribute", &Variable::SetAttribute),
+                InstanceMethod("addAttribute", &Variable::AddAttribute),
                 InstanceMethod("renameAttribute", &Variable::RenameAttribute),
                 InstanceMethod("deleteAttribute", &Variable::DeleteAttribute),
 
-		        InstanceAccessor<&Variable::GetId>("id"),
-		        InstanceAccessor<&Variable::GetType>("type"),
+		        InstanceAccessor<&Variable::GetTypeSync>("type"),
+		        InstanceAccessor<&Variable::GetNameSync>("name"),
 		        
-		        // InstanceAccessor<&Variable::GetChunkSizes, &Variable::SetChunkSizes>("chunksizes"),
-		        
-		        // InstanceAccessor<&Variable::GetFillValue, &Variable::SetFillValue>("fillvalue"),
-		        // InstanceAccessor<&Variable::GetCompressionShuffle, &Variable::SetCompressionShuffle>(
-			    //     "compressionshuffle"),
-		        // InstanceAccessor<&Variable::GetCompressionDeflate, &Variable::SetCompressionDeflate>(
-			    //     "compressiondeflate"),
-		        // InstanceAccessor<&Variable::GetCompressionLevel, &Variable::SetCompressionLevel>(
-			    // "compressionlevel"),
 			}
 		);
     constructor = Napi::Persistent(func);
@@ -108,10 +102,16 @@ void Variable::Init(Napi::Env env) {
 
 }
 
-Napi::Value Variable::Write(const Napi::CallbackInfo &info) {
+Napi::Value Variable::GetTypeSync(const Napi::CallbackInfo &info) {
+	const char *res=NC_TYPES(this->type);
+	return Napi::String::New(info.Env(),res);
+
+}
+
+Napi::Value Variable::GetName(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+    return deferred.Promise();	
 }
 
 
@@ -121,31 +121,22 @@ Napi::Value Variable::WriteSlice(const Napi::CallbackInfo &info) {
     return deferred.Promise();
 }
 
-Napi::Value Variable::WriteStridedSlice(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
-}
-
 Napi::Value Variable::Read(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
     return deferred.Promise();
-	
 }
 
 Napi::Value Variable::ReadSlice(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
     return deferred.Promise();
-
 }
 
 Napi::Value Variable::ReadStridedSlice(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
     return deferred.Promise();
-
 }
 
 Napi::Value Variable::AddAttribute(const Napi::CallbackInfo &info) {
@@ -198,7 +189,6 @@ Napi::Value Variable::GetName(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
     return deferred.Promise();
-	
 }
 
 Napi::Value  Variable::SetName(const Napi::CallbackInfo &info) {
