@@ -139,6 +139,7 @@ class Variable : public Napi::ObjectWrap<Variable> {
 	static void Init(Napi::Env env);
 	Variable(const Napi::CallbackInfo &info);
 	static Napi::Object Build(Napi::Env env, int id, int parent_id, std::string name, nc_type type, int ndims);
+	void set_name(std::string new_name);
 	
   private:
 
@@ -158,8 +159,8 @@ class Variable : public Napi::ObjectWrap<Variable> {
 	Napi::Value GetDeflateInfo(const Napi::CallbackInfo &info);
 	Napi::Value SetDeflateInfo(const Napi::CallbackInfo &info);
 
-	Napi::Value GetEndiannes(const Napi::CallbackInfo &info);
-	Napi::Value SetEndiannes(const Napi::CallbackInfo &info);
+	Napi::Value GetEndianness(const Napi::CallbackInfo &info);
+	Napi::Value SetEndianness(const Napi::CallbackInfo &info);
 	Napi::Value GetChecksumMode(const Napi::CallbackInfo &info);
 	Napi::Value SetChecksumMode(const Napi::CallbackInfo &info);
 

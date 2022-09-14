@@ -55,8 +55,8 @@ void Variable::Init(Napi::Env env) {
                 InstanceMethod("setChunked", &Variable::SetChunked),
                 InstanceMethod("getDeflateInfo", &Variable::GetDeflateInfo),
                 InstanceMethod("setDeflateInfo", &Variable::SetDeflateInfo),
-                InstanceMethod("getEndiannes", &Variable::GetEndiannes),
-                InstanceMethod("setEndiannes", &Variable::SetEndiannes),
+                InstanceMethod("getEndianness", &Variable::GetEndianness),
+                InstanceMethod("setEndianness", &Variable::SetEndianness),
                 InstanceMethod("getChecksumMode", &Variable::GetChecksumMode),
                 InstanceMethod("setChecksumMode", &Variable::SetChecksumMode),
                 InstanceMethod("getAttributes", &Variable::GetAttributes),
@@ -82,9 +82,22 @@ Napi::Value Variable::GetTypeSync(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value Variable::GetName(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();	
+    Napi::Env env = info.Env();
+	Variable *variable = this;
+	auto worker=new NCAsyncWorker<std::string>(
+		env,
+		[id = this->id, parent_id = this->parent_id] (const NCAsyncWorker<std::string>* worker) {
+			char var_name[NC_MAX_NAME + 1];
+			NC_CALL(nc_inq_varname(parent_id, id, var_name));
+			return std::string(var_name);
+		},
+		[variable] (Napi::Env env, std::string result) {
+			variable->set_name(result);
+			return Napi::String::New(env, result);
+		}
+	);
+	worker->Queue();
+    return worker->Deferred().Promise();	
 }
 
 Napi::Value Variable::GetNameSync(const Napi::CallbackInfo &info) {
@@ -92,9 +105,27 @@ Napi::Value Variable::GetNameSync(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value  Variable::SetName(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+	if (info.Length() < 1) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments"));
+		return deferred.Promise();
+	}
+    Napi::Env env = info.Env();
+	Variable *variable =  this;
+	std::string new_name = info[0].As<Napi::String>().Utf8Value();
+	auto worker=new NCAsyncWorker<std::string>(
+		env, deferred,
+		[id = this->id, parent_id = this->parent_id, new_name] (const NCAsyncWorker<std::string>* worker) {
+			NC_CALL(nc_rename_var(parent_id, id,  new_name.c_str()));
+			return std::string(new_name);
+		},
+		[variable] (Napi::Env env, std::string result) {
+			variable->set_name(result);
+			return Napi::String::New(env, result);
+		}
+	);
+	worker->Queue();
+    return worker->Deferred().Promise();
 }
 
 Napi::Value Variable::GetDimensions(const Napi::CallbackInfo &info) {
@@ -285,17 +316,73 @@ Napi::Value  Variable::SetDeflateInfo(const Napi::CallbackInfo &info) {
     return deferred.Promise();
 }
 
-Napi::Value Variable::GetEndiannes(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+Napi::Value Variable::GetEndianness(const Napi::CallbackInfo &info) {
+    Napi::Env env = info.Env();
+	auto worker=new NCAsyncWorker<int>(
+		env,
+		[id=this->id, parent_id=this->parent_id] (const NCAsyncWorker<int>* worker) {
+            int v;
+			NC_CALL(nc_inq_var_endian(parent_id, id, &v));
+		    return v;
+		},
+		[] (Napi::Env env, int result) {
+			const char *res;
+            switch (result) {
+			case NC_ENDIAN_LITTLE:
+				res = "little";
+				break;
+			case NC_ENDIAN_BIG:
+				res = "big";
+				break;
+			case NC_ENDIAN_NATIVE:
+				res = "native";
+				break;
+			default:
+				res = "unknown";
+				break;
+			}
+			return Napi::String::New(env, res);
+		}
+		
+	);
+	worker->Queue();
+	
+    return worker->Deferred().Promise();
 }
 
-Napi::Value Variable::SetEndiannes(const Napi::CallbackInfo &info) {
+
+Napi::Value Variable::SetEndianness(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Env env = info.Env();
+	if (info.Length() < 1) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments"));
+		return deferred.Promise();
+	}
+    std::string arg = info[0].As<Napi::String>().Utf8Value();
+	int v;
+	if (arg == "little") {
+		v = NC_ENDIAN_LITTLE;
+	} else if (arg == "big") {
+		v = NC_ENDIAN_BIG;
+	} else if (arg == "native") {
+		v = NC_ENDIAN_NATIVE;
+	} else {
+		deferred.Reject(Napi::String::New(info.Env(),"Unknown value"));
+		return deferred.Promise();
+	}
+	auto worker=new NCAsyncWorker<int>(
+		env, deferred,
+		[id=this->id, parent_id=this->parent_id, v](const NCAsyncWorker<int>* worker) {
+            NC_CALL(nc_def_var_endian(parent_id,id,v));
+		    return v;
+		},
+		[] (Napi::Env env, int result) {
+			return Napi::Number::New(env, result);
+		});
+	worker->Queue();
+    return worker->Deferred().Promise();
 }
+
 
 Napi::Value Variable::GetChecksumMode(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
@@ -310,15 +397,29 @@ Napi::Value  Variable::SetChecksumMode(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value Variable::GetAttributes(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+   bool return_type = true;
+	if(info.Length() >0) {
+		return_type = info[0].As<Napi::Boolean>();
+	}
+	Napi::Env env = info.Env();
+	int id = this->id;
+	int parent_id = this->parent_id;
+ 	return netcdf4async::get_attributes(env, parent_id, id, return_type).Promise();
 }
 
 Napi::Value Variable::AddAttribute(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+   Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+	if (info.Length() != static_cast<size_t>(3)) {
+		deferred.Reject(Napi::String::New(info.Env(),"Not all parameters from name,type,value bound"));
+		return deferred.Promise();
+	}
+	std::string type_str=info[1].As<Napi::String>().ToString();
+	int type=get_type(type_str);
+	std::string name=info[0].As<Napi::String>().ToString();
+	Napi::Env env = info.Env();
+	int id = this->id;
+	int parent_id = this->parent_id;
+	return add_attribute(env, deferred, parent_id, id, name, type, info[2]);
 }
 
 
@@ -329,15 +430,26 @@ Napi::Value Variable::SetAttribute(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value Variable::RenameAttribute(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    Napi::Env env =  info.Env();
+	if (info.Length() <2) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments"));
+		return deferred.Promise();
+	}
+	std::string old_attribute_name = info[0].As<Napi::String>().Utf8Value();
+	std::string new_attribute_name = info[0].As<Napi::String>().Utf8Value();
+    return rename_attribute(env, deferred, this->parent_id, this->id, old_attribute_name, new_attribute_name).Promise();
 }
 
 Napi::Value Variable::DeleteAttribute(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    Napi::Env env =  info.Env();
+	if (info.Length() <1) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments"));
+		return deferred.Promise();
+	}
+	std::string attribute_name = info[0].As<Napi::String>().Utf8Value();
+    return delete_attribute(env, deferred, this->parent_id, this->id, attribute_name).Promise();
 }
 
 Napi::Value Variable::Write(const Napi::CallbackInfo &info) {
@@ -416,6 +528,11 @@ Napi::Value Variable::ReadStridedSlice(const Napi::CallbackInfo &info) {
 //     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
 //     return deferred.Promise();
 // }
+
+void Variable::set_name(std::string new_name) {
+	this->name = new_name;
+}
+
 
 Napi::Value Variable::Inspect(const Napi::CallbackInfo &info) {
 	return Napi::String::New(info.Env(), 
