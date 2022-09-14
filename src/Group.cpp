@@ -34,6 +34,15 @@ struct NCGroup_dims
 	size_t len;
 };
 
+struct VariableInfo{
+	int var_id;
+	int parent_d;
+	std::string name;
+	nc_type type;
+	int ndims;
+};
+
+
 Napi::FunctionReference Group::constructor;
 
 Napi::Object Group::Build(Napi::Env env, int id,std::string name) {
@@ -226,14 +235,6 @@ Napi::Value Group::GetId(const Napi::CallbackInfo &info) {
 Napi::Value Group::GetVariables(const Napi::CallbackInfo &info) {
     Napi::Env env = info.Env();
 
-	struct VariableInfo{
-		int var_id;
-		int parent_d;
-		std::string name;
-		nc_type type;
-		int ndims;
-	};
-
 	auto worker=new NCAsyncWorker<std::vector<VariableInfo>>(
 		env,
 		[parent_id=this->id] (const NCAsyncWorker<std::vector<VariableInfo>>* worker) {
@@ -271,7 +272,47 @@ Napi::Value Group::GetVariables(const Napi::CallbackInfo &info) {
 
 Napi::Value Group::GetVariable(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+	Napi::Env env = info.Env();
+
+	if (info.Length() != static_cast<size_t>(1)) {
+	 	deferred.Reject(Napi::String::New(env, "Wrong number of arguments. Missed variable name"));
+	    return deferred.Promise();
+	}
+	
+	const std::string var_name=info[0].As<Napi::String>().ToString();
+
+	auto worker=new NCAsyncWorker<VariableInfo>(
+		env,
+		deferred,
+		[parent_id=this->id,var_name] (const NCAsyncWorker<VariableInfo>* worker) {
+			int nvars;
+			NC_CALL(nc_inq_varids(parent_id, &nvars, NULL));
+			int *var_ids = new int[nvars];
+			NC_CALL(nc_inq_varids(parent_id, NULL, var_ids));
+			VariableInfo varInfo;
+			char varName[NC_MAX_NAME + 1];
+			varInfo.parent_d = parent_id;
+			for(int i=0; i<nvars; i++){
+				varInfo.var_id = var_ids[i];
+				NC_CALL(nc_inq_var(varInfo.parent_d, varInfo.var_id, varName, &varInfo.type, &varInfo.ndims, NULL, NULL));
+				if (var_name == varName) {
+					varInfo.name = std::string(varName);
+					delete[] var_ids;
+					return varInfo;
+				}
+			}
+			delete[] var_ids;
+			throw std::runtime_error(string_format("NetCDF4: Variable %s not found",var_name.c_str()));
+		},
+		[] (Napi::Env env,VariableInfo result) {
+			Napi::Object varObj = Variable::Build(env, result.var_id,
+				result.parent_d, result.name, result.type, result.ndims);
+			return varObj;
+		}
+	);
+	worker->Queue();
+
+
     return deferred.Promise();
 }
 

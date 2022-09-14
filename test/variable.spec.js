@@ -52,24 +52,25 @@ describe.only("Variable", function () {
 
   it("should read an existing (netCDF3)",async function () {
     const variable = await expect(fileold.root.getVariable("var1")).to.be.fulfilled;
-    await expect(variable.read(0)).eventually.to.be.equal(420);
+    const ex=variable.read(0);
+    await expect(ex).eventually.to.be.equal(420);
   });
 
   it("should read an existing (hdf5)", async function () {
-    const variable = await expect(fileold.root.getVariable("UTC_time")).to.be.fulfilled;
+    const variable = await expect(filenew.root.getVariable("UTC_time")).to.be.fulfilled;
     await expect(variable.read(0)).eventually.to.be.equal('2012-03-04 03:54:19');
     await expect(variable.read(1)).eventually.to.be.equal('2012-03-04 03:54:42');
   });
 
   it("should write an existing (hdf5)", async function () {
-    let variable = await expect(fileold.root.getVariable("UTC_time")).to.be.fulfilled;
+    let variable = await expect(filenew.root.getVariable("UTC_time")).to.be.fulfilled;
     await expect(variable.read(0)).eventually.to.be.equal('2012-03-04 03:54:19');
     await expect(variable.write(0,'2012-03-04 03:54:29')).to.be.fulfilled;
     await expect(variable.read(0)).eventually.to.be.equal('2012-03-04 03:54:29');
     await filenew.close();
       
     filenew =await netcdf4.open(filenew.name, "r");
-    variable = await expect(fileold.root.getVariable("UTC_time")).to.be.fulfilled;
+    variable = await expect(filenew.root.getVariable("UTC_time")).to.be.fulfilled;
     await expect(variable.read(0)).eventually.to.be.equal('2012-03-04 03:54:29');
   });
 
@@ -104,12 +105,12 @@ describe.only("Variable", function () {
   it("should rename an existing (hdf5)",async function(){
     let variable = await expect(filenew.root.getVariable("UTC_time")).to.be.fulfilled;
     await expect(variable.setName("UTC_timestamp")).to.be.fulfilled;
-    await expect(fileold.root.getVariables()).eventually.to.have.property("UTC_timestamp");
+    await expect(filenew.root.getVariables()).eventually.to.have.property("UTC_timestamp");
     await expect(variable.getName()).eventurally.to.be.equal("UTC_timestamp");
     expect(variable.name).to.be.equal("UTC_timestamp");
     await filenew.close();
     filenew =await netcdf4.open(filenew.name, "r");
-    variable = await expect(fileold.root.getVariable("UTC_timestamp")).to.be.fulfilled;    
+    variable = await expect(filenew.root.getVariable("UTC_timestamp")).to.be.fulfilled;    
     await expect(variable.getName()).eventurally.to.be.equal("UTC_timestamp");
     expect(variable.name).to.be.equal("UTC_timestamp");
   });
