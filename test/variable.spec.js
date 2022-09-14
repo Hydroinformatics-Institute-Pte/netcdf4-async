@@ -84,84 +84,92 @@ describe("Variable", function () {
       
     fileold =await netcdf4.open(fileold.name, "r");
     await expect(variable.read(0)).eventually.to.be.equal('2012-03-04 03:54:29');
-    fileold.close();
-    fileold = new netcdf4.File(tempFileOldName, "w");
+    await fileold.close();
+    fileold =await netcdf4.open(fileold.name, "r");
     variable = await expect(fileold.root.getVariable("var1")).to.be.fulfilled;    
     await expect(variable.read(0)).eventually.to.be.equal(42);
   });
 
 
-/*
+  it("should rename an existing (netcdf3)",async function(){
+    let variable = await expect(fileold.root.getVariable("var1")).to.be.fulfilled;
+    await expect(variable.setName("var2")).to.be.fulfilled;
+    await expect(fileold.root.getVariables()).eventually.to.have.property("var2");
+    await expect(variable.getName()).eventurally.to.be.equal("var2");
+    expect(variable.name).to.be.equal("var2");
+    await fileold.close();
+    fileold =await netcdf4.open(fileold.name, "r");
+    variable = await expect(fileold.root.getVariable("var2")).to.be.fulfilled;    
+    await expect(variable.getName()).eventurally.to.be.equal("var2");
+    expect(variable.name).to.be.equal("var2");
+  });
 
-  it("should rename an existing", function(){
-    fileold.root.variables.var1.name = "var2";
-    expect(fileold.root.variables).to.have.property("var2");
-    fileold.close();
-    fileold = new netcdf4.File(tempFileOldName, "w");
-    expect(fileold.root.variables).to.have.property("var2");
-
+  it("should rename an existing (hdf5)",async function(){
+    let variable = await expect(filenew.root.getVariable("UTC_time")).to.be.fulfilled;
+    await expect(variable.setName("UTC_timestamp")).to.be.fulfilled;
+    await expect(fileold.root.getVariables()).eventually.to.have.property("UTC_timestamp");
+    await expect(variable.getName()).eventurally.to.be.equal("UTC_timestamp");
+    expect(variable.name).to.be.equal("UTC_timestamp");
+    await filenew.close();
+    filenew =await netcdf4.open(filenew.name, "r");
+    variable = await expect(fileold.root.getVariable("UTC_timestamp")).to.be.fulfilled;    
+    await expect(variable.getName()).eventurally.to.be.equal("UTC_timestamp");
+    expect(variable.name).to.be.equal("UTC_timestamp");
   });
 
 
-  it("should read a slice of existing", function () {
-    var res = fileold.root.variables.var1.readSlice(0, 4)
+  it("should read a slice of existing",async function () {
+    let variable = await expect(fileold.root.getVariable("var1")).to.be.fulfilled;
+    var res = await expect(variable.readSlice(0, 4)).to.be.fulfilled;
     var results = Array.from(res);
     expect(results).to.deep.equal([420, 197, 391.5, 399]);
 //    console.log(res);
   });
 
-  it("should read a strided slice", function () {
-    var res = fileold.root.variables.var1.readStridedSlice(0, 2, 2)
+  it("should read a strided slice",async function () {
+    let variable = await expect(fileold.root.getVariable("var1")).to.be.fulfilled;
+    var res = await expect(variable.readSlice(0, 2,2)).to.be.fulfilled;
     var results = Array.from(res);
     expect(results).to.deep.equal([420, 391.5]);
   });
 
-
-  it("should write an existing", function () {
-    fileold.root.variables.var1.write(0,42);
-    var res = fileold.root.variables.var1.read(0)
-    expect(res).to.be.equal(42);
-    fileold.close();
-    fileold = new netcdf4.File(tempFileOldName, "w");
-    res = fileold.root.variables.var1.read(0)
-    expect(res).to.be.equal(42);
-  });
-
-
-  it("should write a slice of existing", function () {
+  it("should write a slice of existing",async function () {
+    let variable = await expect(fileold.root.getVariable("var1")).to.be.fulfilled;
     const varr=new Float32Array([10,10.5,20,20.5])
-    fileold.root.variables.var1.writeSlice(0, 4,varr)
-    var res = fileold.root.variables.var1.readSlice(0, 4)
+    await expect(variable.writeSlice(0, 4,varr)).to.be.fulfilled;
+    var res = await expect(variable.readSlice(0, 4)).to.be.fulfilled;
     var results = Array.from(res);
     expect(results).to.deep.equal([10,10.5,20,20.5]);
-    fileold.close();
-    fileold = new netcdf4.File(tempFileOldName, "w");
-    var res = fileold.root.variables.var1.readSlice(0, 4)
-    var results = Array.from(res);
+    await fileold.close();
+    fileold =await netcdf4.open(fileold.name, "r");
+    variable = await expect(fileold.root.getVariable("var1")).to.be.fulfilled;
+    res = await expect(variable.readSlice(0, 4)).to.be.fulfilled;
+    results = Array.from(res);
     expect(results).to.deep.equal([10,10.5,20,20.5]);
   });
 
-  it("should write a strided slice", function () {
+  it("should write a strided slice", async function () {
     const varr=new Float32Array([30,20.5])
-    fileold.root.variables.var1.writeStridedSlice(0, 2, 2,varr)
-    var results = Array.from(
-      fileold.root.variables.var1.readStridedSlice(0, 2, 2)
-    );
+    let variable = await expect(fileold.root.getVariable("var1")).to.be.fulfilled;
+    await expect(variable.writeStridedSlice(0, 2, 2,varr)).to.be.fulfilled;
+    var res = await expect(variable.readStridedSlice(0, 2, 2)).to.be.fulfilled;
+    var results = Array.from(res);
     expect(results).to.deep.equal([30, 20.5]);
-    var res = fileold.root.variables.var1.readSlice(0, 4)
+    res = await expect(variable.readSlice(0, 4)).to.be.fulfilled;
     results = Array.from(res);
     expect(results).to.deep.equal([30,197,20.5,399]);
-    fileold.close();
-    fileold = new netcdf4.File(tempFileOldName, "w");
-    results = Array.from(
-      fileold.root.variables.var1.readStridedSlice(0, 2, 2)
-    );
+    await fileold.close();
+    fileold =await netcdf4.open(fileold.name, "r");
+    variable = await expect(fileold.root.getVariable("var1")).to.be.fulfilled;
+    res = await expect(variable.readSlice(0, 4)).to.be.fulfilled;
+    results = Array.from(res);
     expect(results).to.deep.equal([30, 20.5]);
-    res = fileold.root.variables.var1.readSlice(0, 4)
+    res = await expect(variable.readSlice(0, 4)).to.be.fulfilled;
     results = Array.from(res);
     expect(results).to.deep.equal([30,197,20.5,399]);
   });
 
+  /*
   it("should add new Variable whith set all parametrs", function(){
     //    console.log(filenew.root.dimensions);
         expect(filenew.root.variables).to.not.have.property("test_variable");
