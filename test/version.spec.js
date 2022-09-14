@@ -7,6 +7,7 @@ describe("Version", function () {
     });
     it("Has properly filled version attributes",function() {
         const version=netcdf4.version;
+        console.log(version);
         expect(version).to.have.property("major");
         expect(version).to.have.property("minor");
         expect(version).to.have.property("patch");
