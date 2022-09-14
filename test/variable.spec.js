@@ -36,8 +36,8 @@ describe.only("Variable", function () {
     const attributes=await expect(variable.getAttributes()).to.be.fulfilled;
     expect(attributes).to.have.property('name')
     expect(attributes).to.have.property('unit')
-    console.log("getDimension")
-    await expect(variable.getDimensions()).eventually.to.be.equal({"recNum":74});
+    const demention = await expect(variable.getDimensions()).to.be.fulfilled;
+    expect(demention).to.deep.almost.equal({"recNum":74});
   });
 
   it("should read variable params (netCDF3)", async function () {
@@ -48,8 +48,8 @@ describe.only("Variable", function () {
     expect(variable.type).to.be.equal('float')
 
     await expect(variable.getAttributes()).eventually.to.be.empty
-    console.log("getDimension")
-    await expect(variable.getDimensions()).eventually.to.be.equal({"dim1":10000});
+    const demention = await expect(variable.getDimensions()).to.be.fulfilled;
+    expect(demention).to.deep.almost.equal({"dim1":10000});
   });
 
   it("should read an existing (netCDF3)",async function () {

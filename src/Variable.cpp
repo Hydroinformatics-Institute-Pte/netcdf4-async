@@ -129,9 +129,42 @@ Napi::Value  Variable::SetName(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value Variable::GetDimensions(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	struct DementionInfo {
+		int id;
+		int parent_id;
+		std::string name;
+		size_t length;
+	};
+
+	Napi::Env env = info.Env();
+    auto worker = new NCAsyncWorker<std::vector<DementionInfo>>(
+		env,
+		[id = this->id, parent_id = this->parent_id, ndims = this->ndims] (const NCAsyncWorker<std::vector<DementionInfo>>* worker) {
+			int *dim_ids = new int[ndims];
+			NC_CALL(nc_inq_vardimid(parent_id, id, dim_ids));
+			std::vector<DementionInfo> dementions;
+			for (int i = 0; i < ndims; i++) {
+				DementionInfo dementionInfo;
+				dementionInfo.id = dim_ids[i];
+				dementionInfo.parent_id = parent_id;
+				char varName[NC_MAX_NAME + 1];
+				NC_CALL(nc_inq_dim(dementionInfo.parent_id, dementionInfo.id, varName, &dementionInfo.length));
+				dementionInfo.name = std::string(varName);
+				dementions.push_back(dementionInfo);
+			}
+			return dementions;
+		},
+		[] (Napi::Env env, std::vector<DementionInfo> result) {
+			Napi::Object dimensions = Napi::Object::New(env);
+			for (auto nc_dim= result.begin(); nc_dim != result.end(); nc_dim++){
+				auto len = nc_dim->length==NC_UNLIMITED?Napi::String::New(env,"unlimited"):Napi::Number::New(env,nc_dim->length);
+				dimensions.Set(Napi::String::New(env,nc_dim->name), len);
+			}
+         	return dimensions;
+		}
+	);
+	worker->Queue();
+    return worker->Deferred().Promise();
 }
 
 Napi::Value Variable::GetFill(const Napi::CallbackInfo &info) {
