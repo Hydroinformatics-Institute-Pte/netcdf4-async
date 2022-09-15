@@ -176,6 +176,7 @@ namespace netcdf4async {
         char** ps;
         const char* text;
         void* v;
+        size_t* size;
     };
     struct Item
     {

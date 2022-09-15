@@ -7,6 +7,7 @@
 #include "Attribute.h"
 #include "Macros.h"
 
+
 namespace netcdf4async {
 
 
@@ -326,14 +327,90 @@ Napi::Value  Variable::SetFill(const Napi::CallbackInfo &info) {
 
 
 Napi::Value Variable::GetChunked(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Env env =info.Env();
+    auto worker=new NCAsyncWorker<Item>(
+		env,
+		[parent_id = this->parent_id, id = this-> id, ndims = this->ndims] (const NCAsyncWorker<Item>* worker) {
+            int v;
+			Item item;
+			item.value.size =  new size_t[ndims];
+			NC_CALL(nc_inq_var_chunking(parent_id, id, &v, item.value.size));
+	
+			switch (v) {
+			case NC_CONTIGUOUS:
+				item.name = "contiguous";
+				break;
+			case NC_CHUNKED:
+				item.name = "chunked";
+				break;
+			default:
+				item.name = "unknown";
+			break;
+			}
+			item.len = ndims;
+			
+		    return item;
+		},
+		[] (Napi::Env env, Item result) {
+			Napi::Value value;
+			Item* nc_item = &result;
+			ITEM_TO_VAL(int32_t);
+			Napi::Object obj = Napi::Object::New(env);
+			obj.Set(Napi::String::New(env, nc_item->name), value); 
+            return obj;
+		}
+		
+	);
+	worker->Queue();
+    
+    return worker->Deferred().Promise();
 }
 
 Napi::Value  Variable::SetChunked(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+	if (info.Length() < 2) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments"));
+		return deferred.Promise();
+	}
+    Napi::Env env = info.Env();
+	std::string arg = info[0].As<Napi::String>().Utf8Value();
+	int v;
+	if (arg == "contiguous") {
+		v = NC_CONTIGUOUS;
+	} else if (arg == "chunked") {
+		v = NC_CHUNKED;
+	} else {
+		deferred.Reject(Napi::String::New(info.Env(),"Unknown value"));
+		return deferred.Promise();
+	}
+	Napi::Value value = info[1];
+	if (!value.IsTypedArray()) {
+		deferred.Reject(Napi::String::New(info.Env(),"Expecting an array"));
+		return deferred.Promise();
+	}
+	Napi::Uint32Array array = value.As<Napi::Uint32Array>();
+	if (array.ElementLength() != static_cast<size_t>(this->ndims)) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong array size"));
+		return deferred.Promise();
+	}
+	size_t *sizes = new size_t[this->ndims];
+	for (int i = 0; i < this->ndims; i++) {
+		sizes[i] = array[i];
+	}
+	auto worker = new NCAsyncWorker<int>(
+		env, deferred, 
+		[parent_id = this->parent_id, id = this-> id, ndims = this->ndims, v, sizes] (const NCAsyncWorker<int>* worker) {
+			NC_CALL(nc_def_var_chunking(parent_id, id, v, sizes));
+			delete[] sizes;
+            return 1;
+		},
+		[] (Napi::Env env, int result) {
+			return Napi::String::New(env, "OK");
+		}
+		
+	);
+	worker->Queue();
+
     return deferred.Promise();
 }
 
