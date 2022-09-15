@@ -865,14 +865,117 @@ Napi::Value Variable::WriteSlice(const Napi::CallbackInfo &info) {
 	worker->Queue();	
 	
     return worker->Deferred().Promise();
-
-    return deferred.Promise();
 }
 
 Napi::Value Variable::WriteStridedSlice(const Napi::CallbackInfo &info) {
+	Napi::Env env = info.Env();
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+    if (info.Length() != static_cast<size_t>(3 * this->ndims + 1)) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments"));
+		return deferred.Promise();
+	}
+
+	if (!(info[3 * this->ndims].IsTypedArray() || (this->type==NC_STRING && info[3 * this->ndims].IsArray()))) {
+		deferred.Reject(Napi::String::New(info.Env(),this->type==NC_STRING?"Expecting array":"Expecting a typed array"));
+		return deferred.Promise();
+	}
+	size_t *pos = new size_t[this->ndims];
+	size_t *size = new size_t[this->ndims];
+	ptrdiff_t *stride = new ptrdiff_t[this->ndims];
+	size_t total_size = 1;
+	for (int i = 0; i < this->ndims; i++) {
+		pos[i] = info[3 * i].As<Napi::Number>().Int32Value();
+		size_t s = info[3 * i + 1].As<Napi::Number>().Int32Value();
+		size[i] = s;
+		total_size *= s;
+		stride[i] = info[3 * i + 2].As<Napi::Number>().Int32Value();
+	}
+
+	Napi::Value value = info[3 * this->ndims];
+	Item nc_item;
+	switch (this->type) {
+	case NC_BYTE: {
+		VAL_TO_ITEM(int8_t);
+	} break;
+	case NC_CHAR: {
+		std::string v = value.As<Napi::String>().ToString();
+		nc_item.value.s = new char[v.length()+1];
+		nc_item.value.s[v.length()] = 0;
+		strcpy(nc_item.value.s, v.c_str());
+		nc_item.len = v.length();
+	} break;
+	case NC_SHORT: {
+		VAL_TO_ITEM(int16_t);
+	} break;
+	case NC_INT: {
+		VAL_TO_ITEM(int32_t);
+	} break;
+	case NC_FLOAT: {
+		VAL_TO_ITEM(float);
+	} break;
+	case NC_DOUBLE: { 
+		VAL_TO_ITEM(double);
+	} break;
+	case NC_UBYTE: {
+		VAL_TO_ITEM(uint8_t);
+	} break;
+	case NC_USHORT: {
+		VAL_TO_ITEM(uint16_t);
+	} break; 
+	case NC_UINT: { 
+		VAL_TO_ITEM(uint32_t);
+	} break; 
+#if NODE_MAJOR_VERSION >= 10
+	case NC_UINT64: {
+		VAL_TO_ITEM(uint64_t);
+	} 
+	break;
+	case NC_INT64: {
+		VAL_TO_ITEM(int64_t);
+	} 
+	break;
+#endif
+	case NC_STRING:{
+		std::vector<std::unique_ptr<const std::string > >* string = new std::vector<std::unique_ptr<const std::string > >() ;
+		std::vector<const char*>* cstrings = new std::vector<const char*>();
+		if(value.IsArray()){
+			auto arr = value.As<Napi::Array>();
+			nc_item.len = static_cast<int>(arr.Length());
+			for (int i =0; i<static_cast<int>(arr.Length()); i++){
+				Napi::Value napiV=arr[i];
+				string->push_back(std::make_unique<std::string>(std::string(napiV.ToString().Utf8Value())));
+				cstrings->push_back(string->at(i)->c_str());
+			}
+		} else {
+			string->push_back(std::make_unique<std::string>(std::string(value.As<Napi::String>().ToString().Utf8Value())));
+			cstrings->push_back(string->at(0)->c_str());
+			nc_item.len = 1;
+		}
+
+		nc_item.value.v = cstrings->data();
+	}
+	break;
+	default:
+        deferred.Reject(Napi::String::New(info.Env(),"Variable type not supported yet"));
+		return deferred.Promise();
+	}
+
+   auto worker=new NCAsyncWorker<int>(
+		env, deferred, 
+		[id=this->id, parent_id=this->parent_id, type = this->type, pos, size, stride, nc_item](const NCAsyncWorker<int>* worker) {
+			NC_CALL(nc_put_vars(parent_id, id, pos, size, stride, nc_item.value.v));
+			delete[] pos;
+			delete[] size;
+			delete[] stride;
+			return 1;
+		},
+		[] (Napi::Env env, int result) {
+			return Napi::String::New(env,"OK");
+		}
+	);
+	worker->Queue();	
+	
+    return worker->Deferred().Promise();
 }
 
 

@@ -165,9 +165,6 @@ describe.only("Variable", function () {
     variable = await expect(fileold.root.getVariable("var1")).to.be.fulfilled;
     res = await expect(variable.readSlice(0, 4)).to.be.fulfilled;
     results = Array.from(res);
-    expect(results).to.deep.equal([30, 20.5]);
-    res = await expect(variable.readSlice(0, 4)).to.be.fulfilled;
-    results = Array.from(res);
     expect(results).to.deep.equal([30,197,20.5,399]);
   });
 
