@@ -10,6 +10,11 @@
 
 namespace netcdf4async {
 
+struct DeflateInfo {
+	bool shuffle;
+	bool deflate;
+	int level;
+};
 
 Napi::FunctionReference Variable::constructor;
 
@@ -415,15 +420,63 @@ Napi::Value  Variable::SetChunked(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value Variable::GetDeflateInfo(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Env env = info.Env();
+	auto worker = new NCAsyncWorker<DeflateInfo>(
+		env, 
+		[parent_id = this->parent_id, id = this-> id] (const NCAsyncWorker<DeflateInfo>* worker) {
+			DeflateInfo result;
+			int shuffle;
+			int deflate;
+			int level;
+			NC_CALL(nc_inq_var_deflate(parent_id, id, &shuffle, &deflate, &level));
+			result.shuffle = shuffle==1;
+			result.deflate = deflate==1;
+			result.level = level;
+            return result;
+		},
+		[] (Napi::Env env, DeflateInfo result) {
+			Napi::Object obj = Napi::Object::New(env);
+			obj.Set(Napi::String::New(env, "shuffle"), Napi::Boolean::New(env, result.shuffle));
+			obj.Set(Napi::String::New(env, "deflate"), Napi::Boolean::New(env, result.deflate));
+			obj.Set(Napi::String::New(env, "level"), Napi::Number::New(env, result.level));
+			return obj;
+		}
+	);
+	worker->Queue();
+    return worker->Deferred().Promise();
 }
 
 Napi::Value  Variable::SetDeflateInfo(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Env env = info.Env();
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+	if (info.Length() < 3) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments"));
+		return deferred.Promise();
+	}
+	if (!info[0].IsBoolean() || !info[1].IsBoolean()) {
+		deferred.Reject(Napi::String::New(info.Env(),"Expecting a boolean"));
+		return deferred.Promise();
+	}
+    DeflateInfo deflateInfo;
+	deflateInfo.shuffle = info[0].As<Napi::Boolean>();
+	deflateInfo.deflate = info[1].As<Napi::Boolean>();
+	deflateInfo.level = info[2].As<Napi::Number>().Uint32Value();
+	auto worker = new NCAsyncWorker<DeflateInfo>(
+		env, deferred, 
+		[parent_id = this->parent_id, id = this-> id, deflateInfo] (const NCAsyncWorker<DeflateInfo>* worker) {
+			NC_CALL(nc_def_var_deflate(parent_id, id, deflateInfo.shuffle? 1:0, deflateInfo.deflate? 1:0, deflateInfo.level));
+	        return deflateInfo;
+		},
+		[] (Napi::Env env, DeflateInfo result) {
+			Napi::Object obj = Napi::Object::New(env);
+			obj.Set(Napi::String::New(env, "shuffle"), Napi::Boolean::New(env, result.shuffle));
+			obj.Set(Napi::String::New(env, "deflate"), Napi::Boolean::New(env, result.deflate));
+			obj.Set(Napi::String::New(env, "level"), Napi::Number::New(env, result.level));
+			return obj;
+		}
+	);
+	worker->Queue();
+    return worker->Deferred().Promise();
 }
 
 Napi::Value Variable::GetEndianness(const Napi::CallbackInfo &info) {
@@ -495,16 +548,64 @@ Napi::Value Variable::SetEndianness(const Napi::CallbackInfo &info) {
 
 
 Napi::Value Variable::GetChecksumMode(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Env env = info.Env();
+	auto worker=new NCAsyncWorker<int>(
+		env,
+		[id=this->id, parent_id=this->parent_id](const NCAsyncWorker<int>* worker) {
+            int v;
+			NC_CALL(nc_inq_var_fletcher32(parent_id, id, &v));
+			return v;
+		},
+		[] (Napi::Env env, int result) {
+			std::string res;
+			switch (result) {
+			case NC_NOCHECKSUM:
+				res = "none";
+				break;
+			case NC_FLETCHER32:
+				res = "fletcher32";
+				break;
+			default:
+				res = "unknown";
+				break;
+			}
+			return Napi::String::New(env, res);
+		});
+	worker->Queue();	
+    return worker->Deferred().Promise();
 }
 
 Napi::Value  Variable::SetChecksumMode(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Env env = info.Env();
+	if (info.Length() < 1) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments"));
+		return deferred.Promise();
+	}
+    std::string arg = info[0].As<Napi::String>().Utf8Value();
+	int v;
+	if (arg == "none") {
+		v = NC_NOCHECKSUM;
+	} else if (arg == "fletcher32") {
+		v = NC_FLETCHER32;
+	} else {
+		deferred.Reject(Napi::String::New(info.Env(), "Unknown value"));
+		return deferred.Promise();
+	}
+
+    auto worker=new NCAsyncWorker<int>(
+		env,
+		[id=this->id, parent_id=this->parent_id, v](const NCAsyncWorker<int>* worker) {
+            NC_CALL(nc_def_var_fletcher32(parent_id, id, v));
+			return 1;
+		},
+		[] (Napi::Env env, int result) {
+			return Napi::Number::New(env, result);
+		});
+	worker->Queue();	
+    return worker->Deferred().Promise();
 }
+
 
 Napi::Value Variable::GetAttributes(const Napi::CallbackInfo &info) {
    bool return_type = true;
@@ -582,9 +683,38 @@ Napi::Value Variable::WriteStridedSlice(const Napi::CallbackInfo &info) {
 
 
 Napi::Value Variable::Read(const Napi::CallbackInfo &info) {
+	Napi::Env env = info.Env();
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+    if (info.Length() != static_cast<size_t>(this->ndims)) {
+		deferred.Reject(Napi::String::New(info.Env(), "Wrong number of arguments"));
+    	return deferred.Promise();
+	}
+	
+	size_t *pos = new size_t[this->ndims];
+	size_t *size = new size_t[this->ndims];
+	for (int i = 0; i < this->ndims; i++) {
+		pos[i] = info[i].As<Napi::Number>().Int64Value();
+		size[i] = 1;
+	}
+    auto worker=new NCAsyncWorker<Item>(
+		env, deferred, 
+		[id=this->id, parent_id=this->parent_id, type = this->type, pos, size](const NCAsyncWorker<Item>* worker) {
+			Item result;
+			result.type = type;
+			result.len = 1;
+			typedValue(&result);
+            NC_CALL(nc_get_vara(parent_id, id, pos, size, result.value.v));
+			delete[] pos;
+			delete[] size;
+			return result;
+		},
+		[] (Napi::Env env, Item result) {
+			
+			return item2value(env, &result);
+		});
+	worker->Queue();	
+	
+    return worker->Deferred().Promise();
 }
 
 Napi::Value Variable::ReadSlice(const Napi::CallbackInfo &info) {

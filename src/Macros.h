@@ -159,6 +159,7 @@
         );                                                               \
         return deferred.Promise();                                                 \
     }
+
 namespace netcdf4async {
 
     union UnionType{
@@ -185,5 +186,8 @@ namespace netcdf4async {
         size_t len;
         UnionType value;
     };
+
+    Napi::Value item2value(Napi::Env env, Item *nc_item);
+    void typedValue(Item* pItem);
 }
 #endif
