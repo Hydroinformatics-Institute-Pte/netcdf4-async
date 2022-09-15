@@ -220,7 +220,9 @@ describe.only("Variable", function () {
         cases.push([parseInt(value)," Number representation of ",parseInt(defaultValue)])
       }
     }
-    cases.push([values=methods[0].prototype?new methods[0](values):methods[0](values)," array "])
+    if (file!=='netcdf3') {
+      cases.push([methods[0].prototype?new methods[0](values):methods[0](values)," array "])
+    }
 
     const issue1=(type==='string' && (netcdf4.version.minor<6 || (netcdf4.version.minor===6 && netcdf4.version.patch===0)));
     const issue2=(file=='netcdf3' && netcdf4.version.minor<7);
@@ -245,31 +247,55 @@ describe.only("Variable", function () {
         let newVar=await fd.root.addVariable('test_variable',type,[dim]);
         expect(newVar.name).to.be.equal('test_variable')
         expect(newVar.type).to.be.equal(type)
-        if (issue1 || issue2) {
-          // In netcdf4 library before 5.6.1 set default fill value for string leading to segfault
-          // Same 
-          await fd.dataMode();
+        if (defaultValue!==undefined) {
+          if (issue1 || issue2) {
+            // In netcdf4 library before 5.6.1 set default fill value for string leading to segfault
+            // Same 
+            await fd.dataMode();
+          }
+          else {
+            await newVar.setFill(defaultValue);
+            let fillValue=await expect(newVar.getFill()).to.be.fulfilled;
+            expect(fillValue).to.be.almost.equal(methods[1](defaultValue));  
+            await fd.dataMode();
+            await expect(newVar.read(0)).eventually.to.be.almost.eq(fillValue);
+          }
+  
+        }
+        await expect(newVar.write(0,value)).to.be.fulfilled;
+        if (scalar===' array ') {
+          await expect(newVar.read(0)).eventually.to.be.almost.eq(methods[1](value[0]));
         }
         else {
-          await newVar.setFill(methods[1](defaultValue));
-          let fillValue=await expect(newVar.getFill()).to.be.fulfilled;
-          expect(fillValue).to.be.almost.eql(methods[1](defaultValue));  
-          await fd.dataMode();
-          await expect(newVar.read(0)).eventually.to.be.almost.equal(fillValue);
+          if (type==='float') {
+            let t=await newVar.read(0);
+            expect(t-methods[1](value)).to.be.almost.eq(methods[1](0));
+          }
+          else {
+            await expect(newVar.read(0)).eventually.to.be.almost.eq(methods[1](value));
+          }
         }
-        await expect(newVar.write(0,methods[1](value))).to.be.fulfilled;
-        let newVarValue = await expect(newVar.read(0)).to.be.fulfilled;
-        expect(newVarValue).to.be.almost.eql(methods[1](value));
-        
         await fd.close();
         fd=await newFile(fd.name,'r');
         await expect(fd.root.getVariables()).eventually.to.have.property("test_variable");
-        const variable=await expect(fd.root.getVariable("test_variable")).to.be.fulfilled;
-        let variableValue = await expect(variable.read(0)).to.be.fulfilled;
-        expect(variableValue).to.be.almost.eql(methods[1](value));
-        if (!(issue1 || issue2)) {
-          let variableFill = await expect(variable.getFill()).to.be.fulfilled;
-          expect(variableFill).to.be.almost.eql(defaultValue);
+          const variable=await expect(fd.root.getVariable("test_variable")).to.be.fulfilled;
+        if (scalar===' array ') {
+          await expect(variable.read(0)).eventually.to.be.almost.eq(methods[1](value[0]));
+        }
+        else {
+          if (type==='float') {
+            let t=await variable.read(0);
+            expect(t-methods[1](value)).to.be.almost.eq(methods[1](0));
+          }
+          else {
+            await expect(variable.read(0)).eventually.to.be.almost.equal(methods[1](value));
+          }
+        }
+        if (defaultValue!==undefined){
+          if (!(issue1 || issue2)) {
+            let variableFill = await expect(variable.getFill()).to.be.fulfilled;
+            expect(variableFill).to.be.almost.eql(methods[1](defaultValue));
+          }  
         }
       }
     )
@@ -341,7 +367,7 @@ describe.only("Variable", function () {
     ['byte',10,[10,20,30,40],127],
     ['short',1024,[20,512,333,1024],32767],
     ['int',100000,[0,-200,3000,555666],32767],
-    ['float',153.2,[-12,33,55.5,106.2],-555.555],
+    ['float',153.2,[-12.22,33,55.5,106.2],-555.555],    
     ['double',153.2,[-12,33,55.5,106.2],-555.555],
     ['ubyte',10,[10,20,30,40],127],
     ['ushort',1024,[20,512,333,1024],127],

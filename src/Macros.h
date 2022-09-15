@@ -25,8 +25,10 @@
 #define NAPI_Array_int32_t Int32Array
 #define NAPI_Array_double Float64Array
 #define NAPI_Array_float Float32Array
-#define NAPI_Array_int64_t BigInt64Array
-#define NAPI_Array_uint64_t BigUint64Array
+#if NODE_MAJOR_VERSION > 8
+    #define NAPI_Array_int64_t BigInt64Array
+    #define NAPI_Array_uint64_t BigUint64Array
+#endif
 
 #define NAPI_Value_uint8_t Int32Value
 #define NAPI_Value_uint16_t Int32Value
@@ -47,8 +49,13 @@
 #define NAPI_Attr_int32_t Number
 #define NAPI_Attr_double Number
 #define NAPI_Attr_float Number
-#define NAPI_Attr_uint64_t BigInt
-#define NAPI_Attr_int64_t BigInt
+#if NODE_MAJOR_VERSION > 8
+    #define NAPI_Attr_uint64_t BigInt
+    #define NAPI_Attr_int64_t BigInt
+#else 
+    #define NAPI_Attr_uint64_t Number
+    #define NAPI_Attr_int64_t Number
+#endif
 
 #define NAPI_Union_uint8_t u8
 #define NAPI_Union_uint16_t u16
