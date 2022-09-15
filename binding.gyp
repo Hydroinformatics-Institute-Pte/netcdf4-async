@@ -19,6 +19,7 @@
             "sources": [
                 "src/netcdf4-async.cpp",
                 "src/async.cpp",
+                "src/Macros.cpp",
                 "src/File.cpp",
                 "src/Attribute.cpp",
                 "src/Group.cpp",

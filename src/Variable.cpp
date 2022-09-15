@@ -683,9 +683,38 @@ Napi::Value Variable::WriteStridedSlice(const Napi::CallbackInfo &info) {
 
 
 Napi::Value Variable::Read(const Napi::CallbackInfo &info) {
+	Napi::Env env = info.Env();
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+    if (info.Length() != static_cast<size_t>(this->ndims)) {
+		deferred.Reject(Napi::String::New(info.Env(), "Wrong number of arguments"));
+    	return deferred.Promise();
+	}
+	
+	size_t *pos = new size_t[this->ndims];
+	size_t *size = new size_t[this->ndims];
+	for (int i = 0; i < this->ndims; i++) {
+		pos[i] = info[i].As<Napi::Number>().Int64Value();
+		size[i] = 1;
+	}
+    auto worker=new NCAsyncWorker<Item>(
+		env, deferred, 
+		[id=this->id, parent_id=this->parent_id, type = this->type, pos, size](const NCAsyncWorker<Item>* worker) {
+			Item result;
+			result.type = type;
+			result.len = 1;
+			typedValue(&result);
+            NC_CALL(nc_get_vara(parent_id, id, pos, size, result.value.v));
+			delete[] pos;
+			delete[] size;
+			return result;
+		},
+		[] (Napi::Env env, Item result) {
+			
+			return item2value(env, &result);
+		});
+	worker->Queue();	
+	
+    return worker->Deferred().Promise();
 }
 
 Napi::Value Variable::ReadSlice(const Napi::CallbackInfo &info) {
