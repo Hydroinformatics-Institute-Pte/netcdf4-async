@@ -186,46 +186,75 @@ Napi::Value Group::AddDimension(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value Group::AddVariable(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-	// if (info.Length() != static_cast<size_t>(3)) {
-	// 	Napi::TypeError::New(info.Env(), "Wrong number of arguments. Need variable name, type and dimenisons").ThrowAsJavaScriptException();
-	// 	return info.Env().Undefined();
-	// }
-	// if (!info[2].IsArray()) {
-	// 	Napi::TypeError::New(info.Env(),"Dimensions must be an array").ThrowAsJavaScriptException();
-	// 	return info.Env().Undefined();
-	// }
-	// auto dims=info[2].As<Napi::Array>();
-	// auto dims_size=dims.Length();
-	// if (dims_size==0u) {
-	// 	Napi::TypeError::New(info.Env(),"Dimensions must be a non-empty array").ThrowAsJavaScriptException();
-	// 	return info.Env().Undefined();
-	// }
-	// std::string type_str=info[1].As<Napi::String>().ToString();
-	// int type=get_type(type_str);
-	// if (type==NC2_ERR) {
-	// 	Napi::TypeError::New(info.Env(),"Bad variable type").ThrowAsJavaScriptException();
-	// 	return info.Env().Undefined();
-	// }
+	struct VariableInfo {
+		int id;
+		int parent_id;
+		std::string name;
+		nc_type type;
+		int ndims;
+	};
+	
 
-	// std::string name=info[0].As<Napi::String>().ToString();
-	// int *ndims = new int[dims_size];
-	// for(auto i=0u;i<dims_size;i++) {
-	// 	Napi::Value v=dims[i];
-	// 	if (v.IsNumber()) {
-	// 		ndims[i]=v.As<Napi::Number>().Int32Value();
-	// 	}
-	// 	else {
-	// 		std::string dim_name=v.ToString();
-	// 		NC_CALL(nc_inq_dimid(this->id,dim_name.c_str(),&ndims[i]));
-	// 	}
-	// }
-	// int new_id;
-	// NC_CALL(nc_def_var(this->id,name.c_str(),type,dims_size,ndims,&new_id));
-	// delete[] ndims;
-	// return Variable::Build(info.Env(),new_id,this->id);
-    return deferred.Promise();
+	Napi::Env env = info.Env();
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    if (info.Length() != static_cast<size_t>(3)) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments. Need variable name, type and dimenisons"));
+		return deferred.Promise();
+	}
+	if (!info[2].IsArray()) {
+		deferred.Reject(Napi::String::New(info.Env(),"Dimensions must be an array"));
+		return deferred.Promise();
+	}
+	auto dims=info[2].As<Napi::Array>();
+	auto dims_size=dims.Length();
+	if (dims_size==0u) {
+		deferred.Reject(Napi::String::New(info.Env(),"Dimensions must be a non-empty array"));
+		return deferred.Promise();
+	}
+	std::string type_str=info[1].As<Napi::String>().ToString();
+	int type=get_type(type_str);
+	if (type==NC2_ERR) {
+		deferred.Reject(Napi::String::New(info.Env(),"Bad variable type"));
+		return deferred.Promise();
+	}
+
+	std::string name=info[0].As<Napi::String>().ToString();
+	std::vector<std::unique_ptr<const std::string > >* dim_name = new std::vector<std::unique_ptr<const std::string > >() ;
+	for(auto i=0u;i<dims_size;i++) {
+		Napi::Value dm=dims[i];
+		dim_name->push_back(std::make_unique<std::string>(dm.As<Napi::String>().Utf8Value()));
+	}
+
+	auto worker=new NCAsyncWorker<VariableInfo>(
+		env,
+		deferred,
+		[id=this->id, name, type, dims_size, dim_name] (const NCAsyncWorker<VariableInfo>* worker) {
+			int *ndims = new int[dims_size];
+			for(auto i=0u;i<dims_size;i++) {
+				NC_CALL(nc_inq_dimid(id, dim_name->at(i)->c_str(), &ndims[i]));
+			}
+			int new_id;
+			NC_CALL(nc_def_var(id,name.c_str(), type, dims_size, ndims ,&new_id));
+			delete[] ndims;
+			dim_name->clear();
+			dim_name->~vector();
+			VariableInfo result;
+			result.id= new_id;
+			result.parent_id = id;
+			result.name = name;
+			result.ndims = dims_size;
+			result.type = type;
+			return result;
+		},
+		[] (Napi::Env env,VariableInfo result) {
+			
+			return Variable::Build(env,result.id, result.parent_id, result.name, result.type, result.ndims);
+		}
+
+	);
+	worker->Queue();
+
+	return worker->Deferred().Promise(); 
 }
 
 Napi::Value Group::GetId(const Napi::CallbackInfo &info) {

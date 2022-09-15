@@ -178,58 +178,60 @@ Napi::Value Variable::GetFill(const Napi::CallbackInfo &info) {
     int id = this->id;
     int parent_id = this->parent_id;
     nc_type type = this->type;
-    auto worker=new NCAsyncWorker<UnionType>(
+    auto worker=new NCAsyncWorker<Item>(
 		env, 
-		[id, parent_id, type] (const NCAsyncWorker<UnionType>* worker) {
-            UnionType result;
+		[id, parent_id, type] (const NCAsyncWorker<Item>* worker) {
+            Item result;
+			result.len = 1;
+			result.type = type;
             switch (type) {
 	        case NC_BYTE: 
-		        TYPED_VALUE(result,int8_t,1)
+		        TYPED_VALUE(result.value,int8_t,1)
 		    break;
 	        case NC_CHAR: 
-		        TYPED_VALUE(result,char,2)
-		        result.s[1] = 0; 
+		        TYPED_VALUE(result.value,char,2)
+		        result.value.s[1] = 0; 
 	        break;
 	        case NC_SHORT: 
-		        TYPED_VALUE(result,int16_t,1)
+		        TYPED_VALUE(result.value,int16_t,1)
 	        break;
 	        case NC_INT:
-		        TYPED_VALUE(result,int32_t,1)
+		        TYPED_VALUE(result.value,int32_t,1)
 		    break;
 	        case NC_FLOAT: 
-		        TYPED_VALUE(result,float,1)
+		        TYPED_VALUE(result.value,float,1)
 			break;
 	        case NC_DOUBLE:
-		        TYPED_VALUE(result,double,1)
+		        TYPED_VALUE(result.value,double,1)
 			break;
 	        case NC_UBYTE: 
-		        TYPED_VALUE(result,uint8_t,1)
+		        TYPED_VALUE(result.value,uint8_t,1)
 		    break;
 	        case NC_USHORT: 
-		        TYPED_VALUE(result,uint16_t,1)
+		        TYPED_VALUE(result.value,uint16_t,1)
 	        break;
 	        case NC_UINT:
-		        TYPED_VALUE(result,uint32_t,1)
+		        TYPED_VALUE(result.value,uint32_t,1)
 		    break;
 #if NODE_MAJOR_VERSION > 9
 	        case NC_UINT64:
-		        TYPED_VALUE(result,uint64_t,1)
+		        TYPED_VALUE(result.value,uint64_t,1)
 		    break;
 	        case NC_INT64:
-		        TYPED_VALUE(result,int64_t,1)
+		        TYPED_VALUE(result.value,int64_t,1)
 		    break;
 #endif
 	        case NC_STRING:
-		        result.ps = new char *[1];
+		        result.value.ps = new char *[1];
 	        break;
 	        default:
             	throw std::runtime_error("Variable type not supported yet");
 	        }
-	        NC_CALL(nc_inq_var_fill(parent_id, id, NULL, result.v));
+	        NC_CALL(nc_inq_var_fill(parent_id, id, NULL, result.value.v));
 		    return result;
 		},
-		[type] (Napi::Env env, UnionType result) {
-            return Napi::String::New(env,"OK");
+		[] (Napi::Env env, Item result) {
+            return item2value(env, &result);
 		}
 		
 	);
@@ -1110,46 +1112,6 @@ Napi::Value Variable::ReadStridedSlice(const Napi::CallbackInfo &info) {
 	worker->Queue();	
     return worker->Deferred().Promise();
 }
-
-
-
-
-
-// Napi::Value Variable::GetCompressionShuffle(const Napi::CallbackInfo &info) {
-//     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-//     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-//     return deferred.Promise();
-// }
-
-// void Variable::SetCompressionShuffle(const Napi::CallbackInfo &info) {
-//     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-//     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-//     return deferred.Promise();
-// }
-
-// Napi::Value Variable::GetCompressionDeflate(const Napi::CallbackInfo &info) {
-//     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-//     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-//     return deferred.Promise();
-// }
-
-// void Variable::SetCompressionDeflate(const Napi::CallbackInfo &info) {
-//     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-//     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-//     return deferred.Promise();
-// }
-
-// Napi::Value Variable::GetCompressionLevel(const Napi::CallbackInfo &info) {
-//     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-//     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-//     return deferred.Promise();
-// }
-
-// void Variable::SetCompressionLevel(const Napi::CallbackInfo &info) {
-//     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-//     deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-//     return deferred.Promise();
-// }
 
 void Variable::set_name(std::string new_name) {
 	this->name = new_name;

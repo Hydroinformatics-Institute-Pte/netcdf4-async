@@ -258,14 +258,18 @@ describe.only("Variable", function () {
           await expect(newVar.read(0)).eventually.to.be.almost.equal(fillValue);
         }
         await expect(newVar.write(0,methods[1](value))).to.be.fulfilled;
-        await expect(newVar.read(0)).eventually.to.be.almost.eql(methods[1](value));
+        let newVarValue = await expect(newVar.read(0)).to.be.fulfilled;
+        expect(newVarValue).to.be.almost.eql(methods[1](value));
+        
         await fd.close();
         fd=await newFile(fd.name,'r');
         await expect(fd.root.getVariables()).eventually.to.have.property("test_variable");
         const variable=await expect(fd.root.getVariable("test_variable")).to.be.fulfilled;
-        await expect(variable.read(0)).eventually.to.almost.eql(methods[1](value));
+        let variableValue = await expect(variable.read(0)).to.be.fulfilled;
+        expect(variableValue).to.be.almost.eql(methods[1](value));
         if (!(issue1 || issue2)) {
-          await expect(variable.getFill()).eventually.to.be.almost.eql(defaultValue);
+          let variableFill = await expect(variable.getFill()).to.be.fulfilled;
+          expect(variableFill).to.be.almost.eql(defaultValue);
         }
       }
     )
