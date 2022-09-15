@@ -765,9 +765,54 @@ Napi::Value Variable::ReadSlice(const Napi::CallbackInfo &info) {
 
 
 Napi::Value Variable::ReadStridedSlice(const Napi::CallbackInfo &info) {
+	Napi::Env env = info.Env();
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+    if (info.Length() != static_cast<size_t>(3 * this->ndims)) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments"));
+		return deferred.Promise();
+	}
+
+#if NODE_MAJOR_VERSION >= 10
+	if (this->type < NC_BYTE || (this->type > NC_UINT64 && this->type != NC_STRING)) {
+#else
+	if (this->type < NC_BYTE || (this->type > NC_UINT && this->type != NC_STRING)) {
+#endif		
+		deferred.Reject(Napi::String::New(info.Env(),"Variable type not supported yet"));
+		return deferred.Promise();
+	}
+
+	size_t *pos = new size_t[this->ndims];
+	size_t *size = new size_t[this->ndims];
+	ptrdiff_t *stride = new ptrdiff_t[this->ndims];
+	size_t total_size = 1;
+
+	for (int i = 0; i < this->ndims; i++) {
+		pos[i] = info[3 * i].As<Napi::Number>().Int64Value();
+		size[i] = info[3 * i + 1].As<Napi::Number>().Int64Value();
+		total_size *= size[i];
+		stride[i] = static_cast<ptrdiff_t>(
+			info[3 * i + 2].As<Napi::Number>().Int64Value()
+		);
+	}
+
+    auto worker=new NCAsyncWorker<Item>(
+		env, deferred,
+		[id=this->id, parent_id=this->parent_id, type = this->type, pos, size, stride, total_size](const NCAsyncWorker<Item>* worker) {
+            Item result;
+			result.type = type;
+			result.len = total_size;
+			typedValue(&result);
+			NC_CALL(nc_get_vars(parent_id, id, pos, size, stride, result.value.v));
+			delete[] pos;
+			delete[] size;
+			delete[] stride;
+			return result;
+		},
+		[] (Napi::Env env, Item result) {
+			return item2value(env, &result);
+		});
+	worker->Queue();	
+    return worker->Deferred().Promise();
 }
 
 

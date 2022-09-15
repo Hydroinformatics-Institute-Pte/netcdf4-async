@@ -130,7 +130,7 @@ describe.only("Variable", function () {
 
   it("should read a strided slice",async function () {
     let variable = await expect(fileold.root.getVariable("var1")).to.be.fulfilled;
-    var res = await expect(variable.readSlice(0, 2,2)).to.be.fulfilled;
+    var res = await expect(variable.readStridedSlice(0, 2, 2)).to.be.fulfilled;
     var results = Array.from(res);
     expect(results).to.deep.equal([420, 391.5]);
   });
