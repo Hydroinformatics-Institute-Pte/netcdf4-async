@@ -6,12 +6,12 @@ const netcdf4 = require("..");
 
 let files=[];
 
-const newFile=async (name,mode='w')=>{
+const newFile=async (name,mode='w',filetype=undefined)=>{
     const tempFileName = uniqueFilename(tmpdir(), `nc`);
     if (mode[0]!=='c') {
         copyFileSync(name, tempFileName);
     }
-    const file=await netcdf4.open(tempFileName, mode);
+    const file=await netcdf4.open(tempFileName, mode,filetype);
     files.push(file);
     return file;
   };

@@ -52,6 +52,33 @@ describe.only("Variable", function () {
     expect(demention).to.deep.almost.equal({"dim1":10000});
   });
 
+  it("should rename an existing (netcdf3)",async function(){
+    let variable = await expect(fileold.root.getVariable("var1")).to.be.fulfilled;
+    await expect(variable.setName("var2")).to.be.fulfilled;
+    await expect(fileold.root.getVariables()).eventually.to.have.property("var2");
+    await expect(variable.getName()).eventually.to.be.equal("var2");
+    expect(variable.name).to.be.equal("var2");
+    await fileold.close();
+    fileold =await netcdf4.open(fileold.name, "r");
+    variable = await expect(fileold.root.getVariable("var2")).to.be.fulfilled;    
+    await expect(variable.getName()).eventually.to.be.equal("var2");
+    expect(variable.name).to.be.equal("var2");
+  });
+
+  it("should rename an existing (hdf5)",async function(){
+    let variable = await expect(filenew.root.getVariable("UTC_time")).to.be.fulfilled;
+    await expect(variable.setName("UTC_timestamp")).to.be.fulfilled;
+    await expect(filenew.root.getVariables()).eventually.to.have.property("UTC_timestamp");
+    await expect(variable.getName()).eventually.to.be.equal("UTC_timestamp");
+    expect(variable.name).to.be.equal("UTC_timestamp");
+    await filenew.close();
+    filenew =await netcdf4.open(filenew.name, "r");
+    variable = await expect(filenew.root.getVariable("UTC_timestamp")).to.be.fulfilled;    
+    await expect(variable.getName()).eventually.to.be.equal("UTC_timestamp");
+    expect(variable.name).to.be.equal("UTC_timestamp");
+  });
+
+
   it("should read an existing (netCDF3)",async function () {
     const variable = await expect(fileold.root.getVariable("var1")).to.be.fulfilled;
     const ex=variable.read(0);
@@ -91,31 +118,6 @@ describe.only("Variable", function () {
   });
 
 
-  it("should rename an existing (netcdf3)",async function(){
-    let variable = await expect(fileold.root.getVariable("var1")).to.be.fulfilled;
-    await expect(variable.setName("var2")).to.be.fulfilled;
-    await expect(fileold.root.getVariables()).eventually.to.have.property("var2");
-    await expect(variable.getName()).eventually.to.be.equal("var2");
-    expect(variable.name).to.be.equal("var2");
-    await fileold.close();
-    fileold =await netcdf4.open(fileold.name, "r");
-    variable = await expect(fileold.root.getVariable("var2")).to.be.fulfilled;    
-    await expect(variable.getName()).eventually.to.be.equal("var2");
-    expect(variable.name).to.be.equal("var2");
-  });
-
-  it("should rename an existing (hdf5)",async function(){
-    let variable = await expect(filenew.root.getVariable("UTC_time")).to.be.fulfilled;
-    await expect(variable.setName("UTC_timestamp")).to.be.fulfilled;
-    await expect(filenew.root.getVariables()).eventually.to.have.property("UTC_timestamp");
-    await expect(variable.getName()).eventually.to.be.equal("UTC_timestamp");
-    expect(variable.name).to.be.equal("UTC_timestamp");
-    await filenew.close();
-    filenew =await netcdf4.open(filenew.name, "r");
-    variable = await expect(filenew.root.getVariable("UTC_timestamp")).to.be.fulfilled;    
-    await expect(variable.getName()).eventually.to.be.equal("UTC_timestamp");
-    expect(variable.name).to.be.equal("UTC_timestamp");
-  });
 
 
   it("should read a slice of existing",async function () {
@@ -204,76 +206,73 @@ describe.only("Variable", function () {
         expect(newVar).to.have.property("compressionlevel");
         expect(newVar.attributes).to.have.property("len");
       });
-    
-
-  const arrTypes={
-    "byte":[Int8Array,Number],
-    "short":[Int16Array,Number],
-    "int":[Int32Array,Number],
-    "float":[Float32Array,Number],
-    "double":[Float64Array,Number],
-    "ubyte":[Uint8Array,Number],
-    "ushort":[Uint16Array,Number],
-    "uint":[Uint32Array,Number],
-    "string":[Array.from,String]
-  };
-  if (process.versions.node.split(".")[0]>=10) {
-    arrTypes["uint64"]=[BigUint64Array,BigInt];
-    arrTypes["int64"]=[BigInt64Array,BigInt];
-  };
+*/    
 
   const testFunc=(file,type,value,values,defaultValue)=>{
     const methods=arrTypes[type];
 
-    it(`should create/read/write ${type} variable (${file})`,
-      function(){
-        let [fd,path]=file==='netcdf3'?[fileold,tempFileOldName]:[filenew,tempFileNewName];
+    const cases=[];
+    cases.push(
+      [methods[1](value)," ",methods[1](defaultValue)]
+    );
+    if (!isNaN(value)) {
+      if (type.substr(-2)!=='64') {
+        cases.push([BigInt(parseInt(value))," BigInt representation of ",BigInt(parseInt(defaultValue))])
+      }
+      else {
+        cases.push([parseInt(value)," Number representation of ",parseInt(defaultValue)])
+      }
+    }
+    cases.push([values=methods[0].prototype?new methods[0](values):methods[0](values)," array "])
+
+    const issue1=(type==='string' && (netcdf4.version.minor<6 || (netcdf4.version.minor===6 && netcdf4.version.patch===0)));
+    const issue2=(file=='netcdf3' && netcdf4.version.minor<7);
+
+    cases.forEach(([value,scalar,defaultValue])=>{
+
+    it(`${file} should create/read/write${scalar}${type} variable with value ${value}`,
+      async function(){
+        let fd;
         if (file==='netcdf3') {
-            try{
-              fd.close();
-            } catch (ignore) {
-              console.log(`Got ${ignore.message} during file closing, ingored`)
-            }
-            fd=new netcdf4.File(path,'c!','classic')
-          fd.root.addDimension("dim1",75)
+            fd=await newFile(fixture,'c!','classic')
+            await fd.root.addDimension("dim1",75)
+        }
+        else {
+            fd=await newFile(fixture1)
         }
 
         const dim=file==='netcdf3'?"dim1":"recNum";
 
-        const issue1=(type==='string' && (netcdf4.version.minor<6 || (netcdf4.version.minor===6 && netcdf4.version.patch===0)));
-        const issue2=(file=='netcdf3' && netcdf4.version.minor<7);
 
-        expect(methods).to.be.not.empty;
-        expect(fd.root.variables).to.not.have.property("test_variable");
-        newVar=fd.root.addVariable('test_variable',type,[dim]);
+        await expect(fd.root.getVariables()).eventually.to.not.have.property("test_variable");
+        let newVar=await fd.root.addVariable('test_variable',type,[dim]);
         expect(newVar.name).to.be.equal('test_variable')
         expect(newVar.type).to.be.equal(type)
         if (issue1 || issue2) {
           // In netcdf4 library before 5.6.1 set default fill value for string leading to segfault
           // Same 
-          fd.dataMode();
+          await fd.dataMode();
         }
         else {
-          newVar.fillvalue=methods[1](defaultValue);
-          expect(newVar.fillvalue).to.be.almost.eql(methods[1](defaultValue));  
-          fd.dataMode();
-          expect(newVar.read(0)).to.be.equal(newVar.fillvalue);
+          await newVar.setFill(methods[1](defaultValue));
+          let fillValue=await expect(newVar.getFill()).to.be.fulfilled;
+          expect(fillValue).to.be.almost.eql(methods[1](defaultValue));  
+          await fd.dataMode();
+          await expect(newVar.read(0)).eventually.to.be.almost.equal(fillValue);
         }
-        newVar.write(0,methods[1](value));
-        expect(newVar.read(0)).to.be.almost.eql(methods[1](value));
-        try{
-          fd.close();
-        } catch (ignore) {
-          console.log(`Got ${ignore.message} during file closing, ingored`)
-        }
-        fd=new netcdf4.File(path,'r');
-        expect(fd.root.variables).to.have.property("test_variable");
-        expect(fd.root.variables.test_variable.read(0)).to.almost.eql(methods[1](value));
+        await expect(newVar.write(0,methods[1](value))).to.be.fulfilled;
+        await expect(newVar.read(0)).eventually.to.be.almost.eql(methods[1](value));
+        await fd.close();
+        fd=await newFile(fd.name,'r');
+        await expect(fd.root.getVariables()).eventually.to.have.property("test_variable");
+        const variable=await expect(fd.root.getVariable("test_variable")).to.be.fulfilled;
+        await expect(variable.read(0)).eventually.to.almost.eql(methods[1](value));
         if (!(issue1 || issue2)) {
-          expect(fd.root.variables.test_variable.fillvalue).to.be.almost.eql(methods[1](defaultValue));
+          await expect(variable.getFill()).eventually.to.be.almost.eql(defaultValue);
         }
       }
     )
+/*    
     it(`should read/write slice ${type} variable (${file}) `,
       function() {
         let [fd,path]=file==='netcdf3'?[fileold,tempFileOldName]:[filenew,tempFileNewName];
@@ -332,8 +331,10 @@ describe.only("Variable", function () {
         expect(fd.root.variables).to.have.property("test_variable");
         expect(Array.from(fd.root.variables.test_variable.readStridedSlice(0,2,2))).to.deep.almost.equal([values[0],values[2]]);
       }
-    )    
-  }
+    )   
+*/     
+  })
+};
 
   const testSuiteOld=[
     ['byte',10,[10,20,30,40],127],
@@ -346,13 +347,12 @@ describe.only("Variable", function () {
     ['uint',100000,[0,200,3000,555666],127],
     ['string',"Test value",["111","222","333","444"],"fill"]
   ];
-  console.log(process.versions.node.split(".")[0])
   if (process.versions.node.split(".")[0]>=10) {
     testSuiteOld.push(['uint64',1024,[20,512555,333,77788889].map(v=>BigInt(v)),BigInt(100)]);
     testSuiteOld.push(['int64',100000,[0,200,3000,555666].map(v=>BigInt(v)),BigInt(100)]);
   };
   testSuiteOld.forEach(v=>testFunc('hdf5',v[0],v[1],v[2],v[3]));
   testSuiteOld.filter(v=>['ubyte','ushort','uint','string','int64','uint64'].indexOf(v[0])===-1).forEach(v=>testFunc('netcdf3',v[0],v[1],v[2],v[3]));
-*/
+
 
 });
