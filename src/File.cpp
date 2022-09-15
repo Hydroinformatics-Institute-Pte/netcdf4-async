@@ -149,9 +149,8 @@ Napi::Value File::Open(const Napi::CallbackInfo& info) {
 	int open_format = NC_NETCDF4;
 	Napi::Env env = info.Env();
 
-	if (info.Length() > 2) {
-		std::string format_arg = info[2].As<Napi::String>().Utf8Value();
-
+	if (info.Length() > 2 && !(info[2].IsUndefined() || info[2].IsNull())) {
+		std::string format_arg = info[2].As<Napi::String>();
 		if (format_arg == "classic") {
 			open_format = 0;
 		} else if (format_arg == "classic64") {
