@@ -10,6 +10,11 @@
 
 namespace netcdf4async {
 
+struct DeflateInfo {
+	bool shuffle;
+	bool deflate;
+	int level;
+};
 
 Napi::FunctionReference Variable::constructor;
 
@@ -415,15 +420,63 @@ Napi::Value  Variable::SetChunked(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value Variable::GetDeflateInfo(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Env env = info.Env();
+	auto worker = new NCAsyncWorker<DeflateInfo>(
+		env, 
+		[parent_id = this->parent_id, id = this-> id] (const NCAsyncWorker<DeflateInfo>* worker) {
+			DeflateInfo result;
+			int shuffle;
+			int deflate;
+			int level;
+			NC_CALL(nc_inq_var_deflate(parent_id, id, &shuffle, &deflate, &level));
+			result.shuffle = shuffle==1;
+			result.deflate = deflate==1;
+			result.level = level;
+            return result;
+		},
+		[] (Napi::Env env, DeflateInfo result) {
+			Napi::Object obj = Napi::Object::New(env);
+			obj.Set(Napi::String::New(env, "shuffle"), Napi::Boolean::New(env, result.shuffle));
+			obj.Set(Napi::String::New(env, "deflate"), Napi::Boolean::New(env, result.deflate));
+			obj.Set(Napi::String::New(env, "level"), Napi::Number::New(env, result.level));
+			return obj;
+		}
+	);
+	worker->Queue();
+    return worker->Deferred().Promise();
 }
 
 Napi::Value  Variable::SetDeflateInfo(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Env env = info.Env();
+	Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+	if (info.Length() < 3) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments"));
+		return deferred.Promise();
+	}
+	if (!info[0].IsBoolean() || !info[1].IsBoolean()) {
+		deferred.Reject(Napi::String::New(info.Env(),"Expecting a boolean"));
+		return deferred.Promise();
+	}
+    DeflateInfo deflateInfo;
+	deflateInfo.shuffle = info[0].As<Napi::Boolean>();
+	deflateInfo.deflate = info[1].As<Napi::Boolean>();
+	deflateInfo.level = info[2].As<Napi::Number>().Uint32Value();
+	auto worker = new NCAsyncWorker<DeflateInfo>(
+		env, deferred, 
+		[parent_id = this->parent_id, id = this-> id, deflateInfo] (const NCAsyncWorker<DeflateInfo>* worker) {
+			NC_CALL(nc_def_var_deflate(parent_id, id, deflateInfo.shuffle? 1:0, deflateInfo.deflate? 1:0, deflateInfo.level));
+	        return deflateInfo;
+		},
+		[] (Napi::Env env, DeflateInfo result) {
+			Napi::Object obj = Napi::Object::New(env);
+			obj.Set(Napi::String::New(env, "shuffle"), Napi::Boolean::New(env, result.shuffle));
+			obj.Set(Napi::String::New(env, "deflate"), Napi::Boolean::New(env, result.deflate));
+			obj.Set(Napi::String::New(env, "level"), Napi::Number::New(env, result.level));
+			return obj;
+		}
+	);
+	worker->Queue();
+    return worker->Deferred().Promise();
 }
 
 Napi::Value Variable::GetEndianness(const Napi::CallbackInfo &info) {
