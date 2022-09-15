@@ -548,16 +548,64 @@ Napi::Value Variable::SetEndianness(const Napi::CallbackInfo &info) {
 
 
 Napi::Value Variable::GetChecksumMode(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Env env = info.Env();
+	auto worker=new NCAsyncWorker<int>(
+		env,
+		[id=this->id, parent_id=this->parent_id](const NCAsyncWorker<int>* worker) {
+            int v;
+			NC_CALL(nc_inq_var_fletcher32(parent_id, id, &v));
+			return v;
+		},
+		[] (Napi::Env env, int result) {
+			std::string res;
+			switch (result) {
+			case NC_NOCHECKSUM:
+				res = "none";
+				break;
+			case NC_FLETCHER32:
+				res = "fletcher32";
+				break;
+			default:
+				res = "unknown";
+				break;
+			}
+			return Napi::String::New(env, res);
+		});
+	worker->Queue();	
+    return worker->Deferred().Promise();
 }
 
 Napi::Value  Variable::SetChecksumMode(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-    return deferred.Promise();
+	Napi::Env env = info.Env();
+	if (info.Length() < 1) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments"));
+		return deferred.Promise();
+	}
+    std::string arg = info[0].As<Napi::String>().Utf8Value();
+	int v;
+	if (arg == "none") {
+		v = NC_NOCHECKSUM;
+	} else if (arg == "fletcher32") {
+		v = NC_FLETCHER32;
+	} else {
+		deferred.Reject(Napi::String::New(info.Env(), "Unknown value"));
+		return deferred.Promise();
+	}
+
+    auto worker=new NCAsyncWorker<int>(
+		env,
+		[id=this->id, parent_id=this->parent_id, v](const NCAsyncWorker<int>* worker) {
+            NC_CALL(nc_def_var_fletcher32(parent_id, id, v));
+			return 1;
+		},
+		[] (Napi::Env env, int result) {
+			return Napi::Number::New(env, result);
+		});
+	worker->Queue();	
+    return worker->Deferred().Promise();
 }
+
 
 Napi::Value Variable::GetAttributes(const Napi::CallbackInfo &info) {
    bool return_type = true;
