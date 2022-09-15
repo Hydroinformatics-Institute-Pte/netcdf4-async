@@ -110,7 +110,7 @@ describe.only("Variable", function () {
     await fileold.close();
       
     fileold =await netcdf4.open(fileold.name, "r");
-    await expect(variable.read(0)).eventually.to.be.equal('2012-03-04 03:54:29');
+    await expect(variable.read(0)).eventually.to.be.equal(42);
     await fileold.close();
     fileold =await netcdf4.open(fileold.name, "r");
     variable = await expect(fileold.root.getVariable("var1")).to.be.fulfilled;    
