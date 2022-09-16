@@ -262,29 +262,17 @@ describe.only("Variable", function () {
   
         }
         await expect(newVar.write(0,value)).to.be.fulfilled;
-        if (scalar===' array ') {
+        {
           let t=await newVar.read(0);
-          expect(t).to.be.almost.eq(methods[1](value[0]));
-        }
-        else {
-          let t=await newVar.read(0);
-//            console.log('-',type_detect(t));
-//            console.log('-',type_detect(methods[1](value)));
-            expect(methods[1](value)).to.be.almost.eq(t);
+          expect(t).to.be.almost.eq(methods[1](scalar===' array '?value[0]:value));
         }
         await fd.close();
         fd=await newFile(fd.name,'r');
         await expect(fd.root.getVariables()).eventually.to.have.property("test_variable");
           const variable=await expect(fd.root.getVariable("test_variable")).to.be.fulfilled;
-          if (scalar===' array ') {
+          {
             let t=await variable.read(0);
-            expect(t).to.be.almost.eq(methods[1](value[0]));
-          }
-          else {
-            let t=await variable.read(0);
-  //            console.log('-',type_detect(t));
-  //            console.log('-',type_detect(methods[1](value)));
-              expect(methods[1](value)).to.be.almost.eq(t);
+            expect(t).to.be.almost.eq(methods[1](scalar===' array '?value[0]:value));
           }
           if (defaultValue!==undefined){
           if (!(issue1 || issue2)) {
