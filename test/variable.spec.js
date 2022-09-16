@@ -2,8 +2,9 @@ const chai = require("chai");
 const expect = chai.expect;
 const chaiAsPromised = require('chai-as-promised');
 const chaiAlmost=require("chai-almost");
-chai.use(chaiAsPromised);
 chai.use(chaiAlmost(0.0001));
+chai.use(chaiAsPromised);
+var type_detect = require('type-detect');
 
 
 const netcdf4 = require("..");
@@ -44,10 +45,10 @@ describe.only("Variable", function () {
     const variable=await expect(fileold.root.getVariables()).eventually.to.have.property("var1");
     expect(variable.inspect(),'[Variable var1, type float, 1 dimenison(s)]')
     expect(variable.name).to.be.equal('var1')
-    await expect(variable.getName()).eventually.to.be.equal('var1')
+    expect(variable.getName()).eventually.to.be.equal('var1')
     expect(variable.type).to.be.equal('float')
 
-    await expect(variable.getAttributes()).eventually.to.be.empty
+    expect(variable.getAttributes()).eventually.to.be.empty
     const demention = await expect(variable.getDimensions()).to.be.fulfilled;
     expect(demention).to.deep.almost.equal({"dim1":10000});
   });
@@ -255,40 +256,37 @@ describe.only("Variable", function () {
             let fillValue=await expect(newVar.getFill()).to.be.fulfilled;
             expect(fillValue).to.be.almost.equal(methods[1](defaultValue));  
             await fd.dataMode();
-            await expect(newVar.read(0)).eventually.to.be.almost.eq(fillValue);
+            fillValue=await newVar.read(0)
+            await expect(fillValue).to.be.almost.eq(methods[1](defaultValue));
           }
   
         }
         await expect(newVar.write(0,value)).to.be.fulfilled;
         if (scalar===' array ') {
-          await expect(newVar.read(0)).eventually.to.be.almost.eq(methods[1](value[0]));
+          let t=await newVar.read(0);
+          expect(t).to.be.almost.eq(methods[1](value[0]));
         }
         else {
-          if (type==='float') {
-            let t=await newVar.read(0);
-            expect(t-methods[1](value)).to.be.almost.eq(methods[1](0));
-          }
-          else {
-            await expect(newVar.read(0)).eventually.to.be.almost.eq(methods[1](value));
-          }
+          let t=await newVar.read(0);
+//            console.log('-',type_detect(t));
+//            console.log('-',type_detect(methods[1](value)));
+            expect(methods[1](value)).to.be.almost.eq(t);
         }
         await fd.close();
         fd=await newFile(fd.name,'r');
         await expect(fd.root.getVariables()).eventually.to.have.property("test_variable");
           const variable=await expect(fd.root.getVariable("test_variable")).to.be.fulfilled;
-        if (scalar===' array ') {
-          await expect(variable.read(0)).eventually.to.be.almost.eq(methods[1](value[0]));
-        }
-        else {
-          if (type==='float') {
+          if (scalar===' array ') {
             let t=await variable.read(0);
-            expect(t-methods[1](value)).to.be.almost.eq(methods[1](0));
+            expect(t).to.be.almost.eq(methods[1](value[0]));
           }
           else {
-            await expect(variable.read(0)).eventually.to.be.almost.equal(methods[1](value));
+            let t=await variable.read(0);
+  //            console.log('-',type_detect(t));
+  //            console.log('-',type_detect(methods[1](value)));
+              expect(methods[1](value)).to.be.almost.eq(t);
           }
-        }
-        if (defaultValue!==undefined){
+          if (defaultValue!==undefined){
           if (!(issue1 || issue2)) {
             let variableFill = await expect(variable.getFill()).to.be.fulfilled;
             expect(variableFill).to.be.almost.eql(methods[1](defaultValue));
