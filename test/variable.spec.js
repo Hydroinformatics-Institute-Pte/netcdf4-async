@@ -206,6 +206,12 @@ describe.only("Variable", function () {
   const testFunc=(file,type,value,values,defaultValue)=>{
     const methods=arrTypes[type];
 
+    const compare=async (from,value)=>{
+      const to=await from;
+      expect(to).to.be.almost.eq(value);
+      return to;
+    };
+
     const cases=[];
     cases.push(
       [methods[1](value)," ",methods[1](defaultValue)]
@@ -253,96 +259,80 @@ describe.only("Variable", function () {
           }
           else {
             await newVar.setFill(defaultValue);
-            let fillValue=await expect(newVar.getFill()).to.be.fulfilled;
-            expect(fillValue).to.be.almost.equal(methods[1](defaultValue));  
+            await compare(expect(newVar.getFill()).to.be.fulfilled,methods[1](defaultValue))
             await fd.dataMode();
-            fillValue=await newVar.read(0)
-            await expect(fillValue).to.be.almost.eq(methods[1](defaultValue));
+            await compare(newVar.read(0),methods[1](defaultValue))
           }
   
         }
         await expect(newVar.write(0,value)).to.be.fulfilled;
-        {
-          let t=await newVar.read(0);
-          expect(t).to.be.almost.eq(methods[1](scalar===' array '?value[0]:value));
-        }
+        await compare(newVar.read(0),methods[1](scalar===' array '?value[0]:value));
         await fd.close();
         fd=await newFile(fd.name,'r');
         await expect(fd.root.getVariables()).eventually.to.have.property("test_variable");
-          const variable=await expect(fd.root.getVariable("test_variable")).to.be.fulfilled;
-          {
-            let t=await variable.read(0);
-            expect(t).to.be.almost.eq(methods[1](scalar===' array '?value[0]:value));
-          }
-          if (defaultValue!==undefined){
+        const variable=await expect(fd.root.getVariable("test_variable")).to.be.fulfilled;
+        await compare(variable.read(0),methods[1](scalar===' array '?value[0]:value));
+        if (defaultValue!==undefined){
           if (!(issue1 || issue2)) {
-            let variableFill = await expect(variable.getFill()).to.be.fulfilled;
-            expect(variableFill).to.be.almost.eql(methods[1](defaultValue));
+            await compare(expect(variable.getFill()).to.be.fulfilled,methods[1](defaultValue))
           }  
         }
       }
     )
-/*    
+    
     it(`should read/write slice ${type} variable (${file}) `,
-      function() {
-        let [fd,path]=file==='netcdf3'?[fileold,tempFileOldName]:[filenew,tempFileNewName];
+      async function() {
+        let fd;
         if (file==='netcdf3') {
-          try{
-            fd.close();
-          } catch (ignore) {
-            console.log(`Got ${ignore.message} during file closing, ingored`)
-          }
-          fd=new netcdf4.File(path,'c!','classic')
-          fd.root.addDimension("dim1",75)
+            fd=await newFile(fixture,'c!','classic')
+            await fd.root.addDimension("dim1",75)
         }
-        const dim=file==='netcdf3'?"dim1":"recNum"
-        expect(methods).to.be.not.empty;
-        expect(fd.root.variables).to.not.have.property("test_variable");
-        newVar=fd.root.addVariable('test_variable',type,[dim]);
-        fd.dataMode();
-        newVar.writeSlice(0, 4,methods[0].prototype?new methods[0](values):methods[0](values))
-        const result=fd.root.variables.test_variable.readSlice(0,4);
-        expect(Array.from(fd.root.variables.test_variable.readSlice(0,4))).to.deep.almost.equal(values);
-        try{
-          fd.close();
-        } catch (ignore) {
-          console.log(`Got ${ignore.message} during file closing, ingored`)
+        else {
+            fd=await newFile(fixture1)
         }
-        fd=new netcdf4.File(path,'r');
-        expect(fd.root.variables).to.have.property("test_variable");
-        expect(Array.from(fd.root.variables.test_variable.readSlice(0,4))).to.deep.almost.equal(values);
+
+        const dim=file==='netcdf3'?"dim1":"recNum";
+        await expect(fd.root.getVariables()).eventually.to.not.have.property("test_variable");
+        let newVar=await fd.root.addVariable('test_variable',type,[dim]);
+        await fd.dataMode();
+        await expect(newVar.writeSlice(0, 4,methods[0].prototype?new methods[0](values):methods[0](values))).to.be.fulfilled;
+        let result=await newVar.readSlice(0,4);
+        expect(Array.from(result)).to.deep.almost.equal(values);
+        await fd.close();
+        fd=await newFile(fd.name,'r');
+        await expect(fd.root.getVariables()).eventually.to.have.property("test_variable");
+        newVar=await fd.root.getVariable('test_variable');
+        result=await newVar.readSlice(0,4);
+        expect(Array.from(result)).to.deep.almost.equal(values);
       }
     )
+    
     it(`should read/write strided slice ${type} variable (${file}) `,
-      function() {
-        let [fd,path]=file==='netcdf3'?[fileold,tempFileOldName]:[filenew,tempFileNewName];
+      async function() {
+        let fd;
         if (file==='netcdf3') {
-          try{
-            fd.close();
-          } catch (ignore) {
-            console.log(`Got ${ignore.message} during file closing, ingored`)
-          }
-          fd=new netcdf4.File(path,'c!','classic')
-          fd.root.addDimension("dim1",75)
+            fd=await newFile(fixture,'c!','classic')
+            await fd.root.addDimension("dim1",75)
         }
-        const dim=file==='netcdf3'?"dim1":"recNum"
-        expect(methods).to.be.not.empty;
-        expect(fd.root.variables).to.not.have.property("test_variable");
-        newVar=fd.root.addVariable('test_variable',type,[dim]);
-        fd.dataMode();
-        newVar.writeStridedSlice(0, 2,2,methods[0].prototype?new methods[0]([values[0],values[2]]):methods[0]([values[0],values[2]]))
-        expect(Array.from(fd.root.variables.test_variable.readStridedSlice(0,2,2))).to.deep.almost.equal([values[0],values[2]]);
-        try{
-          fd.close();
-        } catch (ignore) {
-          console.log(`Got ${ignore.message} during file closing, ingored`)
+        else {
+            fd=await newFile(fixture1)
         }
-        fd=new netcdf4.File(path,'r');
-        expect(fd.root.variables).to.have.property("test_variable");
-        expect(Array.from(fd.root.variables.test_variable.readStridedSlice(0,2,2))).to.deep.almost.equal([values[0],values[2]]);
+
+        const dim=file==='netcdf3'?"dim1":"recNum";
+        await expect(fd.root.getVariables()).eventually.to.not.have.property("test_variable");
+        let newVar=await fd.root.addVariable('test_variable',type,[dim]);
+        await fd.dataMode();
+        await newVar.writeStridedSlice(0, 2,2,methods[0].prototype?new methods[0]([values[0],values[2]]):methods[0]([values[0],values[2]]))
+        let result=await newVar.readStridedSlice(0,2,2);
+        expect(Array.from(result)).to.deep.almost.equal([values[0],values[2]]);
+        await fd.close();
+        fd=await newFile(fd.name,'r');
+        await expect(fd.root.getVariables()).eventually.to.have.property("test_variable");
+        newVar=await fd.root.getVariable('test_variable');
+        expect(Array.from(result)).to.deep.almost.equal([values[0],values[2]]);
       }
     )   
-*/     
+     
   })
 };
 
