@@ -296,6 +296,7 @@ Napi::Value File::Close(const Napi::CallbackInfo &info) {
 	if (!this->closed) {
 		this->closed=true;
 		int id=this->id;
+		File *pFile = this;
 		(new NCAsyncWorker<NCFile_result>(
 			env,
 			deferred,
@@ -306,7 +307,10 @@ Napi::Value File::Close(const Napi::CallbackInfo &info) {
 				return result;
 				// this->format=i;
 			},
-			[] (Napi::Env env,NCFile_result result)  {
+			[pFile] (Napi::Env env,NCFile_result result)  {
+				if (pFile->Value().Has("root")) {
+					pFile->Value().Delete("root");
+				}
 				return Napi::Number::New(env,result.id);
 			//	deferred.Resolve();
 			}
