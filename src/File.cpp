@@ -296,6 +296,7 @@ Napi::Value File::Close(const Napi::CallbackInfo &info) {
 	if (!this->closed) {
 		this->closed=true;
 		int id=this->id;
+		this->Value().Delete("root");
 		(new NCAsyncWorker<NCFile_result>(
 			env,
 			deferred,

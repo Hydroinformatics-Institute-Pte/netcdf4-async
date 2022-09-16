@@ -15,7 +15,7 @@ const fixture1 = join(__dirname, "test_hgroups.nc");
 const {newFile,closeAll,arrTypes}=require("./utils");
 
 
-describe.only("Variable", function () {
+describe("Variable", function () {
   let fileold,filenew;
 
   beforeEach(async function () {
