@@ -18,6 +18,8 @@ struct NCFile_result
 	int format;
 	/// @brief Dimension group name
 	std::string group_name;
+	/// @brief Last operation status
+	int status;
 };
 
 
@@ -303,12 +305,15 @@ Napi::Value File::Close(const Napi::CallbackInfo &info) {
 			[id] (const NCAsyncWorker<NCFile_result>* worker) {
 				static NCFile_result result;
 				result.id=id;
-		        NC_VOID_CALL(nc_close(id))
+		        result.status=nc_close(id);
 				return result;
 				// this->format=i;
 			},
 			[] (Napi::Env env,NCFile_result result)  {
-				return Napi::Number::New(env,result.id);
+				Napi::Object obj=Napi::Object::New(env);
+				obj.Set("id",Napi::Number::New(env,result.id));
+				obj.Set("status",Napi::Number::New(env,result.status));
+				return obj;
 			//	deferred.Resolve();
 			}
 			

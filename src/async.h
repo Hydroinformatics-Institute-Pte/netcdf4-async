@@ -23,10 +23,6 @@
 		}                                                                                          \
 	} while (false);
 
-#define NC_VOID_CALL(FN)                                                                                \
-	do {                                                                                           \
-		FN;                                                                           \
-	} while (false);
 
 namespace netcdf4async {
 

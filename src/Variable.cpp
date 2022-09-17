@@ -57,6 +57,8 @@ void Variable::Init(Napi::Env env) {
                 InstanceMethod("getDimensions", &Variable::GetDimensions),
                 InstanceMethod("getFill", &Variable::GetFill),
                 InstanceMethod("setFill", &Variable::SetFill),
+                InstanceMethod("setFillMode", &Variable::SetFill),
+                InstanceMethod("getFillMode", &Variable::GetFillMode),
                 InstanceMethod("getChunked", &Variable::GetChunked),
                 InstanceMethod("setChunked", &Variable::SetChunked),
                 InstanceMethod("getDeflateInfo", &Variable::GetDeflateInfo),
@@ -173,15 +175,19 @@ Napi::Value Variable::GetDimensions(const Napi::CallbackInfo &info) {
     return worker->Deferred().Promise();
 }
 
-Napi::Value Variable::GetFill(const Napi::CallbackInfo &info) {
-    Napi::Env env = info.Env();
+struct FillItem : Item {
+    int fill_mode;
+};
+
+
+Napi::Value Variable::_getFillInfo(Napi::Env env,bool return_mode) { //const Napi::CallbackInfo &info) {
     int id = this->id;
     int parent_id = this->parent_id;
     nc_type type = this->type;
-    auto worker=new NCAsyncWorker<Item>(
+    auto worker=new NCAsyncWorker<FillItem>(
 		env, 
-		[id, parent_id, type] (const NCAsyncWorker<Item>* worker) {
-            Item result;
+		[id, parent_id, type] (const NCAsyncWorker<FillItem>* worker) {
+            FillItem result;
 			result.len = 1;
 			result.type = type;
             switch (type) {
@@ -227,11 +233,17 @@ Napi::Value Variable::GetFill(const Napi::CallbackInfo &info) {
 	        default:
             	throw std::runtime_error("Variable type not supported yet");
 	        }
-	        NC_CALL(nc_inq_var_fill(parent_id, id, NULL, result.value.v));
+	        NC_CALL(nc_inq_var_fill(parent_id, id, &result.fill_mode, result.value.v));
 		    return result;
 		},
-		[] (Napi::Env env, Item result) {
-            return item2value(env, &result);
+		[return_mode] (Napi::Env env, FillItem result) {
+            if (!return_mode) {
+                return item2value(env, &result);
+            }
+			Napi::Object obj = Napi::Object::New(env);
+			obj.Set("value", item2value(env, &result));
+            obj.Set("mode",Napi::Boolean::New(env,result.fill_mode==0));
+            return obj.As<Napi::Value>();
 		}
 		
 	);
@@ -239,91 +251,116 @@ Napi::Value Variable::GetFill(const Napi::CallbackInfo &info) {
     return worker->Deferred().Promise();
 }
 
+
+Napi::Value Variable::GetFill(const Napi::CallbackInfo &info) {
+    return _getFillInfo(info.Env(),false);
+}
+
+Napi::Value Variable::GetFillMode(const Napi::CallbackInfo &info) {
+    return _getFillInfo(info.Env(),true);
+}
+
+
 Napi::Value  Variable::SetFill(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
     Napi::Env env = info.Env();
 	Napi::Value value = info[0];
     int id = this->id;
     int parent_id = this->parent_id;
-    Item nc_item;
+    FillItem nc_item;
+    nc_item.fill_mode=-1;
 
-    switch (this->type) {
-	case NC_BYTE: {
-		VAL_TO_ITEM(int8_t);
-	}break;
-	case NC_CHAR: {
-		std::string v = value.As<Napi::String>().ToString();
-		nc_item.value.s = new char[v.length()+1];
-		nc_item.value.s[v.length()] = 0;
-		strcpy(nc_item.value.s, v.c_str());
-		nc_item.len = v.length();
-	} break;
-	case NC_SHORT: {
-		VAL_TO_ITEM(int16_t);
-	} break;
-	case NC_INT: {
-		VAL_TO_ITEM(int32_t);
-	} break;
-	case NC_FLOAT: {
-		VAL_TO_ITEM(float);
-	} break;
-	case NC_DOUBLE: { 
-		VAL_TO_ITEM(double);
-	} break;
-	case NC_UBYTE: {
-		VAL_TO_ITEM(uint8_t);
-	} break;
-	case NC_USHORT: {
-		VAL_TO_ITEM(uint16_t);
-	} break; 
-	case NC_UINT: { 
-		VAL_TO_ITEM(uint32_t);
-	} break; 
+    if (info.Length()>1 && !(info[1].IsUndefined() || info[1].IsNull())) {
+        nc_item.fill_mode=info[1].ToBoolean().Value()?0:1;
+    }
+
+    if (info.Length()==0 || (info[0].IsUndefined() || info[0].IsNull())) {
+        nc_item.fill_mode=1;
+        nc_item.value.v=NULL;
+    }
+    else {
+        switch (this->type) {
+            case NC_BYTE: {
+                VAL_TO_ITEM(int8_t);
+            }break;
+            case NC_CHAR: {
+                std::string v = value.As<Napi::String>().ToString();
+                nc_item.value.s = new char[v.length()+1];
+                nc_item.value.s[v.length()] = 0;
+                strcpy(nc_item.value.s, v.c_str());
+                nc_item.len = v.length();
+            } break;
+            case NC_SHORT: {
+                VAL_TO_ITEM(int16_t);
+            } break;
+            case NC_INT: {
+                VAL_TO_ITEM(int32_t);
+            } break;
+            case NC_FLOAT: {
+                VAL_TO_ITEM(float);
+            } break;
+            case NC_DOUBLE: { 
+                VAL_TO_ITEM(double);
+            } break;
+            case NC_UBYTE: {
+                VAL_TO_ITEM(uint8_t);
+            } break;
+            case NC_USHORT: {
+                VAL_TO_ITEM(uint16_t);
+            } break; 
+            case NC_UINT: { 
+                VAL_TO_ITEM(uint32_t);
+            } break; 
 #if NODE_MAJOR_VERSION >= 10
-	case NC_UINT64: {
-		VAL_TO_ITEM(uint64_t);
-	} 
-	break;
-	case NC_INT64: {
-		VAL_TO_ITEM(int64_t);
-	} 
-	break;
+            case NC_UINT64: {
+                VAL_TO_ITEM(uint64_t);
+            } 
+            break;
+            case NC_INT64: {
+                VAL_TO_ITEM(int64_t);
+            } 
+            break;
 #endif
-	case NC_STRING:{
-		std::vector<std::unique_ptr<const std::string > >* string = new std::vector<std::unique_ptr<const std::string > >() ;
-				std::vector<const char*>* cstrings = new std::vector<const char*>();
-				if(value.IsArray()){
-					auto arr = value.As<Napi::Array>();
-					nc_item.len = static_cast<int>(arr.Length());
-					for (int i =0; i<static_cast<int>(arr.Length()); i++){
-						Napi::Value napiV=arr[i];
-						string->push_back(std::make_unique<std::string>(std::string(napiV.ToString().Utf8Value())));
-						cstrings->push_back(string->at(i)->c_str());
-					}
-				} else {
-					string->push_back(std::make_unique<std::string>(std::string(value.As<Napi::String>().ToString().Utf8Value())));
-					cstrings->push_back(string->at(0)->c_str());
-					nc_item.len = 1;
-				}
-				nc_item.value.v = cstrings->data();
-	}
-	break;
-	default:
-        deferred.Reject(Napi::String::New(info.Env(),"Variable type not supported yet"));
-		return deferred.Promise();
-	}
+            case NC_STRING:{
+                std::vector<std::unique_ptr<const std::string > >* string = new std::vector<std::unique_ptr<const std::string > >() ;
+                        std::vector<const char*>* cstrings = new std::vector<const char*>();
+                        if(value.IsArray()){
+                            auto arr = value.As<Napi::Array>();
+                            nc_item.len = static_cast<int>(arr.Length());
+                            for (int i =0; i<static_cast<int>(arr.Length()); i++){
+                                Napi::Value napiV=arr[i];
+                                string->push_back(std::make_unique<std::string>(std::string(napiV.ToString().Utf8Value())));
+                                cstrings->push_back(string->at(i)->c_str());
+                            }
+                        } else {
+                            string->push_back(std::make_unique<std::string>(std::string(value.As<Napi::String>().ToString().Utf8Value())));
+                            cstrings->push_back(string->at(0)->c_str());
+                            nc_item.len = 1;
+                        }
+                        nc_item.value.v = cstrings->data();
+            }
+            break;
+            default:
+                deferred.Reject(Napi::String::New(info.Env(),"Variable type not supported yet"));
+                return deferred.Promise();
+        }
+
+    }
+
 
     auto worker=new NCAsyncWorker<int>(
 		env, deferred,
-		[id, parent_id, nc_item] (const NCAsyncWorker<int>* worker) {
-            int mode;
-	        NC_CALL(nc_inq_var_fill(parent_id, id, &mode, NULL));
-	        NC_CALL(nc_def_var_fill(parent_id, id, mode, nc_item.value.v));
+		[id, parent_id, item=nc_item] (const NCAsyncWorker<int>* worker) {
+            int mode=item.fill_mode;
+            if (mode==-1) {
+	            NC_CALL(nc_inq_var_fill(parent_id, id, &mode, NULL));
+            }
+	        NC_CALL(nc_def_var_fill(parent_id, id, mode, item.value.v));
 	        
 		    return 1;
 		},
 		[] (Napi::Env env, int result) {
-            return Napi::String::New(env,"OK");
+            return Napi::String::New(env,"");
 		}
 		
 	);
@@ -363,7 +400,8 @@ Napi::Value Variable::GetChunked(const Napi::CallbackInfo &info) {
 			Item* nc_item = &result;
 			ITEM_TO_VAL(int32_t);
 			Napi::Object obj = Napi::Object::New(env);
-			obj.Set(Napi::String::New(env, nc_item->name), value); 
+            obj.Set("mode",Napi::String::New(env, nc_item->name));
+			obj.Set("sizes", value); 
             return obj;
 		}
 		

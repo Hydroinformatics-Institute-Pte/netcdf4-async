@@ -151,7 +151,9 @@ class Variable : public Napi::ObjectWrap<Variable> {
 	Napi::Value GetDimensions(const Napi::CallbackInfo &info);
 
 	Napi::Value GetFill(const Napi::CallbackInfo &info);
+	Napi::Value GetFillMode(const Napi::CallbackInfo &info);
 	Napi::Value SetFill(const Napi::CallbackInfo &info);
+ 	Napi::Value _getFillInfo(Napi::Env env,bool return_mode);
 
 	Napi::Value GetChunked(const Napi::CallbackInfo &info);
 	Napi::Value SetChunked(const Napi::CallbackInfo &info);

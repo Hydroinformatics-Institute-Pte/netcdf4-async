@@ -166,42 +166,37 @@ describe("Variable", function () {
     expect(results).to.deep.equal([30,197,20.5,399]);
   });
 
-  /*
-  it("should add new Variable whith set all parametrs", function(){
+  
+  it("should add new Variable whith set all parametrs", async function(){
     //    console.log(filenew.root.dimensions);
-        expect(filenew.root.variables).to.not.have.property("test_variable");
-        var newVar=filenew.root.addVariable('test_variable','byte',[filenew.root.dimensions.recNum.id]);
+        await expect(filenew.root.getVariables()).eventually.to.not.have.property("test_variable");
+        let newVar=await expect(filenew.root.addVariable('test_variable','byte',["recNum"])).to.be.fulfilled;
         expect(newVar.inspect(),'[Variable test_variable, type byte, 1 dimension(s)]');
-        expect(filenew.root.variables).to.have.property("test_variable");
-        expect(filenew.root.variables.test_variable.inspect(),'[Variable test_variable, type byte, 1 dimension(s)]');
-        newVar.endianness = "little";
-        newVar.checksummode = "fletcher32";
-        newVar.chunkmode = "chunked";
-        newVar.chunksizes = new Uint32Array([8]);
-        newVar.fillmode = true;
-        newVar.fillvalue = 8;
-        newVar.compressionshuffle = true;
-        newVar.compressiondeflate = true;
-        newVar.compressionlevel = 8;
-        newVar.addAttribute("len", "int", 42);
-        expect(newVar.attributes).to.have.property("len");
-        filenew.close();
-      
-        filenew = new netcdf4.File(tempFileNewName, "r");
-        expect(filenew.root.variables).to.have.property("test_variable");
-        expect(filenew.root.variables.test_variable.inspect(),'[Variable test_variable, type byte, 1 dimension(s)]');
-        newVar = filenew.root.variables.test_variable;
-        expect(newVar.endianness).to.equal("little");
-        expect(newVar.checksummode).to.equal("fletcher32");
-        expect(newVar.chunkmode).to.equal("chunked");
-        expect(newVar.chunksizes).to.deep.equal([8]);
-        expect(newVar.fillmode).to.equal(true);
-        expect(newVar.compressionshuffle).to.equal(true);
-        expect(newVar.compressiondeflate).to.equal(true);
-        expect(newVar).to.have.property("compressionlevel");
-        expect(newVar.attributes).to.have.property("len");
+        await expect(filenew.root.getVariables()).eventually.to.have.property("test_variable");
+        const variable=await filenew.root.getVariable("test_variable");
+        expect(variable.inspect(),'[Variable test_variable, type byte, 1 dimension(s)]');
+        await expect(newVar.setEndianness("little")).to.be.fulfilled;
+        await expect(newVar.setChecksumMode("fletcher32")).to.be.fulfilled;
+        await expect(newVar.setChunked("chunked",new Uint32Array([8]))).to.be.fulfilled;
+        await expect(newVar.setDeflateInfo(true,true,8)).to.be.fulfilled;
+        await expect(newVar.addAttribute("len", "int", 42)).to.be.fulfilled;
+        await expect(newVar.getAttributes()).eventually.to.have.property("len");
+        await expect(newVar.setFillMode(8,true)).to.be.fulfilled;
+        const val=await newVar.read(0);
+        expect(val).to.be.eq(8);
+        
+        await filenew.close();
+        filenew =await netcdf4.open(filenew.name, "r");
+        const t=await filenew.root.getVariables();
+        await expect(filenew.root.getVariables()).eventually.to.have.property("test_variable");
+        newVar = await filenew.root.getVariable("test_variable");
+        expect(newVar.inspect(),'[Variable test_variable, type byte, 1 dimension(s)]');
+        await expect(newVar.getEndianness()).eventually.to.equal("little");
+        await expect(newVar.getChecksumMode()).eventually.to.equal("fletcher32");
+        await expect(newVar.getChunked()).eventually.to.deep.equal({"mode":"chunked","sizes":8});
+        await expect(newVar.getDeflateInfo()).eventually.to.deep.equal({"shuffle":true,"deflate":true,"level":8});
+        await expect(newVar.getFillMode()).eventually.to.deep.equal({"mode":true,"value":8});
       });
-*/    
 
   const testFunc=(file,type,value,values,defaultValue)=>{
     const methods=arrTypes[type];
