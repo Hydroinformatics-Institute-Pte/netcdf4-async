@@ -165,7 +165,7 @@ Napi::Value Variable::GetDimensions(const Napi::CallbackInfo &info) {
 		[] (Napi::Env env, std::vector<DementionInfo> result) {
 			Napi::Object dimensions = Napi::Object::New(env);
 			for (auto nc_dim= result.begin(); nc_dim != result.end(); nc_dim++){
-				auto len = nc_dim->length==NC_UNLIMITED?Napi::String::New(env,"unlimited"):Napi::Number::New(env,nc_dim->length);
+				napi_value len = nc_dim->length==NC_UNLIMITED?Napi::String::New(env,"unlimited"):Napi::Number::New(env,nc_dim->length);
 				dimensions.Set(Napi::String::New(env,nc_dim->name), len);
 			}
          	return dimensions;

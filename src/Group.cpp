@@ -173,7 +173,7 @@ Napi::Value Group::AddDimension(const Napi::CallbackInfo &info) {
 		},
 		[] (Napi::Env env,NCGroup_dims result) {
 			Napi::Object dimension = Napi::Object::New(env);
-			auto len = result.len==NC_UNLIMITED?Napi::String::New(env,"unlimited"):Napi::Number::New(env,result.len);
+			napi_value len = result.len==NC_UNLIMITED?Napi::String::New(env,"unlimited"):Napi::Number::New(env,result.len);
 			dimension.Set(Napi::String::New(env,result.name), len);
          	return dimension;
 		}
@@ -387,7 +387,7 @@ Napi::Value Group::GetDimensions(const Napi::CallbackInfo &info) {
 		[] (Napi::Env env,NCGroup_list<NCGroup_dims> result) {
 			Napi::Object dimensions = Napi::Object::New(env);
 			for (auto nc_dim= result.groups.begin(); nc_dim != result.groups.end(); nc_dim++){
-				auto len = nc_dim->len==NC_UNLIMITED?Napi::String::New(env,"unlimited"):Napi::Number::New(env,nc_dim->len);
+				napi_value len = nc_dim->len==NC_UNLIMITED?Napi::String::New(env,"unlimited"):Napi::Number::New(env,nc_dim->len);
 				dimensions.Set(Napi::String::New(env,nc_dim->name), len);
 			}
          	return dimensions;
