@@ -1,0 +1,67 @@
+# This workflow will do a clean install of node dependencies, build the source code and run tests across different versions of node
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+
+name: Node.js CI
+
+on:
+  push:
+    branches: [master,develop]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      # max-parallel: 2
+      matrix:
+        # node-version: [8.x, 10.x, 12.x, 14.x, 16.x, 18.x]
+        node-version: [10.x, 16.x, 18.x]
+        os: [ubuntu-18.04,ubuntnu-20.04, ubuntu-22.04,macos-10.15, windows-2019]
+        # os: [ubuntu-18.04, ubuntnu-20.04, ubuntu-22.04, macos-10.15, windows-2019]
+        # node-version: [14.x]
+        # os: [windows-2019]
+        exclude:
+          - os: ubuntu-22.04
+            node-version: 8.x
+          - os: ubuntu-18.04
+            node-version: 18.x
+          - os: macos-10.15
+            node-version: 8.x
+          - os: windows-2019
+            node-version: 8.x
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Ubuntu netcdf install
+        run: |
+          sudo apt update
+          sudo apt install -y libnetcdf-dev
+          npm install
+          npm test
+        if: ${{ matrix.os == 'ubuntu-16.04' || matrix.os == 'ubuntu-18.04' || matrix.os == 'ubuntu-20.04' || matrix.os == 'ubuntu-22.04'  }}
+
+      - name: MacOs netcdf install
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+          brew install netcdf
+          npm install
+          npm test
+        if: ${{ matrix.os == 'macos-10.15' }}
+
+      - name: Windows netcdf install
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/parro-it/netcdf4/releases/download/prebuilt-netcdf/netCDF.4.7.4.zip" -OutFile .\netCDF.4.7.4.zip
+          Expand-Archive -Path netCDF.4.7.4.zip -DestinationPath .
+          Set-Item -Path Env:NETCDF_DIR -Value ("$(Get-Location)" + "\netCDF 4.7.4")
+          npm install
+          $env:Path += ";D:\a\netcdf4\netcdf4\netCDF 4.7.4\bin;D:\a\netcdf4\netcdf4\netCDF 4.7.4\lib"
+          npm test
+        if: ${{ matrix.os == 'windows-2019' }}
