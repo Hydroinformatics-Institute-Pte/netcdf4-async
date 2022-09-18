@@ -1,5 +1,7 @@
 #ifndef NCUTILS_H
 #define NCUTILS_H
+#include <netcdf_meta.h>
+
 
 #if NODE_MAJOR_VERSION > 9
 #define NC_TYPES(ID) ID < NC_BYTE || (ID > NC_UINT64 && ID != NC_STRING)?"unsupported":netcdf4async::type_names[ID]
@@ -7,13 +9,21 @@
 #define NC_TYPES(ID) ID < NC_BYTE || (ID > NC_UINT && ID != NC_STRING)?"unsupported":netcdf4async::type_names[ID]
 #endif
 
+#if NC_VERSION_MAJOR <4
+#error NetCDF4 less then 4 not supported
+#endif
+
+#if NC_VERSION_MAJOR >4
+#pragma message("Not tested with NetCDF4 greater than 4")
+#endif
+
 // Ubuntu 22.04 and Ubuntu 20.04 have a different name for NCZARR file type constant
 // So....
-#if NETCDF_VERSION_MINOR < 7
+#if NC_VERSION_MINOR < 7
 #define NC_FORMATS(ID) ID < NC_FORMATX_UNDEFINED || ID > NC_FORMATX_DAP4 ?"unsupported":netcdf4async::format_names[ID]
 #endif
 
-#if NETCDF_VERSION_MINOR < 8 && NETCDF_VERSION_MINOR >7
+#if NC_VERSION_MINOR >=7
 #ifdef NC_FORMATX_NCZARR
 #define NC_FORMATS(ID) ID < NC_FORMATX_UNDEFINED || ID > NC_FORMATX_NCZARR ?"unsupported":netcdf4async::format_names[ID]
 #else
@@ -21,9 +31,6 @@
 #endif
 #endif
 
-#if NETCDF_VERSION_MINOR >= 8
-#define NC_FORMATS(ID) ID < NC_FORMATX_UNDEFINED || ID > NC_FORMATX_NCZARR ?"unsupported":netcdf4async::format_names[ID]
-#endif
 
 namespace netcdf4async {
 

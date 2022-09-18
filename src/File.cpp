@@ -1,4 +1,6 @@
 #include <iostream>
+#include <mutex>
+#include <shared_mutex>
 #include <netcdf.h>
 #include <string>
 #include "netcdf4-async.h"
@@ -18,7 +20,11 @@ struct NCFile_result
 	int format;
 	/// @brief Dimension group name
 	std::string group_name;
+	/// @brief Last operation status
+	int status;
 };
+
+std::shared_timed_mutex open_close;
 
 
 Napi::FunctionReference File::constructor;
@@ -29,6 +35,7 @@ Napi::FunctionReference File::constructor;
  */
 File::~File() {
 	if (!closed) {
+		std::unique_lock<std::shared_timed_mutex> lock(open_close);
 		nc_close(id);
 	}
 }
@@ -149,9 +156,8 @@ Napi::Value File::Open(const Napi::CallbackInfo& info) {
 	int open_format = NC_NETCDF4;
 	Napi::Env env = info.Env();
 
-	if (info.Length() > 2) {
-		std::string format_arg = info[2].As<Napi::String>().Utf8Value();
-
+	if (info.Length() > 2 && !(info[2].IsUndefined() || info[2].IsNull())) {
+		std::string format_arg = info[2].As<Napi::String>();
 		if (format_arg == "classic") {
 			open_format = 0;
 		} else if (format_arg == "classic64") {
@@ -189,6 +195,7 @@ Napi::Value File::Open(const Napi::CallbackInfo& info) {
 		deferred,
 		[name,mode,create] (const NCAsyncWorker<NCFile_result>* worker) {
 			static NCFile_result result;
+			std::unique_lock<std::shared_timed_mutex> lock(open_close);
 			if (create) {
 				NC_CALL(nc_create(name.c_str(), mode, &result.id));
 			}
@@ -267,6 +274,7 @@ Napi::Value File::Sync(const Napi::CallbackInfo &info) {
 			deferred,
 			[id] (const NCAsyncWorker<NCFile_result>* worker) {
 				static NCFile_result result;
+				std::unique_lock<std::shared_timed_mutex> lock(open_close);
 				result.id=id;
 		        NC_CALL(nc_sync(id))
 				return result;
@@ -297,18 +305,23 @@ Napi::Value File::Close(const Napi::CallbackInfo &info) {
 	if (!this->closed) {
 		this->closed=true;
 		int id=this->id;
+		this->Value().Delete("root");
 		(new NCAsyncWorker<NCFile_result>(
 			env,
 			deferred,
 			[id] (const NCAsyncWorker<NCFile_result>* worker) {
 				static NCFile_result result;
+				std::unique_lock<std::shared_timed_mutex> lock(open_close);				
 				result.id=id;
-		        NC_VOID_CALL(nc_close(id))
+		        result.status=nc_close(id);
 				return result;
 				// this->format=i;
 			},
 			[] (Napi::Env env,NCFile_result result)  {
-				return Napi::Number::New(env,result.id);
+				Napi::Object obj=Napi::Object::New(env);
+				obj.Set("id",Napi::Number::New(env,result.id));
+				obj.Set("status",Napi::Number::New(env,result.status));
+				return obj;
 			//	deferred.Resolve();
 			}
 			

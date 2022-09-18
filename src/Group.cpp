@@ -34,6 +34,15 @@ struct NCGroup_dims
 	size_t len;
 };
 
+struct VariableInfo{
+	int var_id;
+	int parent_id;
+	std::string name;
+	nc_type type;
+	int ndims;
+};
+
+
 Napi::FunctionReference Group::constructor;
 
 Napi::Object Group::Build(Napi::Env env, int id,std::string name) {
@@ -77,7 +86,9 @@ void Group::Init(Napi::Env env) {
 		        InstanceMethod("addAttribute", &Group::AddAttribute),
 
 		        InstanceMethod("getVariables",&Group::GetVariables),
+		        InstanceMethod("getVariable",&Group::GetVariable),
 				InstanceMethod("addVariable", &Group::AddVariable),
+
 		        InstanceMethod("inspect", &Group::Inspect)
 //                InstanceAccessor<&Group::GetId>("id"),
 			}
@@ -97,7 +108,7 @@ Napi::Value Group::AddAttribute(const Napi::CallbackInfo &info) {
 	std::string name=info[0].As<Napi::String>().ToString();
 	Napi::Env env = info.Env();
 	int id = this->id;
-	return add_attribute(deferred ,env, id, NC_GLOBAL, name, type, info[2]).Promise();
+	return add_attribute(env, deferred, id, NC_GLOBAL, name, type, info[2]);
 }
 
 Napi::Value Group::AddSubgroup(const Napi::CallbackInfo &info) {
@@ -175,46 +186,75 @@ Napi::Value Group::AddDimension(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value Group::AddVariable(const Napi::CallbackInfo &info) {
-    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-	// if (info.Length() != static_cast<size_t>(3)) {
-	// 	Napi::TypeError::New(info.Env(), "Wrong number of arguments. Need variable name, type and dimenisons").ThrowAsJavaScriptException();
-	// 	return info.Env().Undefined();
-	// }
-	// if (!info[2].IsArray()) {
-	// 	Napi::TypeError::New(info.Env(),"Dimensions must be an array").ThrowAsJavaScriptException();
-	// 	return info.Env().Undefined();
-	// }
-	// auto dims=info[2].As<Napi::Array>();
-	// auto dims_size=dims.Length();
-	// if (dims_size==0u) {
-	// 	Napi::TypeError::New(info.Env(),"Dimensions must be a non-empty array").ThrowAsJavaScriptException();
-	// 	return info.Env().Undefined();
-	// }
-	// std::string type_str=info[1].As<Napi::String>().ToString();
-	// int type=get_type(type_str);
-	// if (type==NC2_ERR) {
-	// 	Napi::TypeError::New(info.Env(),"Bad variable type").ThrowAsJavaScriptException();
-	// 	return info.Env().Undefined();
-	// }
+	struct VariableInfo {
+		int id;
+		int parent_id;
+		std::string name;
+		nc_type type;
+		int ndims;
+	};
+	
 
-	// std::string name=info[0].As<Napi::String>().ToString();
-	// int *ndims = new int[dims_size];
-	// for(auto i=0u;i<dims_size;i++) {
-	// 	Napi::Value v=dims[i];
-	// 	if (v.IsNumber()) {
-	// 		ndims[i]=v.As<Napi::Number>().Int32Value();
-	// 	}
-	// 	else {
-	// 		std::string dim_name=v.ToString();
-	// 		NC_CALL(nc_inq_dimid(this->id,dim_name.c_str(),&ndims[i]));
-	// 	}
-	// }
-	// int new_id;
-	// NC_CALL(nc_def_var(this->id,name.c_str(),type,dims_size,ndims,&new_id));
-	// delete[] ndims;
-	// return Variable::Build(info.Env(),new_id,this->id);
-    return deferred.Promise();
+	Napi::Env env = info.Env();
+    Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
+    if (info.Length() != static_cast<size_t>(3)) {
+		deferred.Reject(Napi::String::New(info.Env(),"Wrong number of arguments. Need variable name, type and dimenisons"));
+		return deferred.Promise();
+	}
+	if (!info[2].IsArray()) {
+		deferred.Reject(Napi::String::New(info.Env(),"Dimensions must be an array"));
+		return deferred.Promise();
+	}
+	auto dims=info[2].As<Napi::Array>();
+	auto dims_size=dims.Length();
+	if (dims_size==0u) {
+		deferred.Reject(Napi::String::New(info.Env(),"Dimensions must be a non-empty array"));
+		return deferred.Promise();
+	}
+	std::string type_str=info[1].As<Napi::String>().ToString();
+	int type=get_type(type_str);
+	if (type==NC2_ERR) {
+		deferred.Reject(Napi::String::New(info.Env(),"Bad variable type"));
+		return deferred.Promise();
+	}
+
+	std::string name=info[0].As<Napi::String>().ToString();
+	std::vector<std::unique_ptr<const std::string > >* dim_name = new std::vector<std::unique_ptr<const std::string > >() ;
+	for(auto i=0u;i<dims_size;i++) {
+		Napi::Value dm=dims[i];
+		dim_name->push_back(std::make_unique<std::string>(dm.As<Napi::String>().Utf8Value()));
+	}
+
+	auto worker=new NCAsyncWorker<VariableInfo>(
+		env,
+		deferred,
+		[id=this->id, name, type, dims_size, dim_name] (const NCAsyncWorker<VariableInfo>* worker) {
+			int *ndims = new int[dims_size];
+			for(auto i=0u;i<dims_size;i++) {
+				NC_CALL(nc_inq_dimid(id, dim_name->at(i)->c_str(), &ndims[i]));
+			}
+			int new_id;
+			NC_CALL(nc_def_var(id,name.c_str(), type, dims_size, ndims ,&new_id));
+			delete[] ndims;
+			dim_name->clear();
+			dim_name->~vector();
+			VariableInfo result;
+			result.id= new_id;
+			result.parent_id = id;
+			result.name = name;
+			result.ndims = dims_size;
+			result.type = type;
+			return result;
+		},
+		[] (Napi::Env env,VariableInfo result) {
+			
+			return Variable::Build(env,result.id, result.parent_id, result.name, result.type, result.ndims);
+		}
+
+	);
+	worker->Queue();
+
+	return worker->Deferred().Promise(); 
 }
 
 Napi::Value Group::GetId(const Napi::CallbackInfo &info) {
@@ -222,28 +262,89 @@ Napi::Value Group::GetId(const Napi::CallbackInfo &info) {
 }
 
 Napi::Value Group::GetVariables(const Napi::CallbackInfo &info) {
+    Napi::Env env = info.Env();
+
+	auto worker=new NCAsyncWorker<std::vector<VariableInfo>>(
+		env,
+		[parent_id=this->id] (const NCAsyncWorker<std::vector<VariableInfo>>* worker) {
+			int nvars;
+			NC_CALL(nc_inq_varids(parent_id, &nvars, NULL));
+			int *var_ids = new int[nvars];
+			NC_CALL(nc_inq_varids(parent_id, NULL, var_ids));
+			std::vector<VariableInfo> variables;
+			for(int i=0; i<nvars; i++){
+				VariableInfo varInfo;
+				varInfo.var_id = var_ids[i];
+				varInfo.parent_id = parent_id;
+				char varName[NC_MAX_NAME + 1];
+				NC_CALL(nc_inq_var(varInfo.parent_id, varInfo.var_id, varName, &varInfo.type, &varInfo.ndims, NULL, NULL));
+				varInfo.name = std::string(varName);
+				variables.push_back(varInfo);
+			}
+			delete[] var_ids;
+			return variables;
+		},
+		[] (Napi::Env env,std::vector<VariableInfo> result) {
+			Napi::Object vars = Napi::Object::New(env);	
+			for (auto var = result.begin(); var < result.end(); ++var) {
+				Napi::Object varObj = Variable::Build(env, var->var_id,
+					var->parent_id, var->name, var->type, var->ndims);
+		 		vars.Set(var->name, varObj);
+	 		}
+			return vars;
+		}
+	);
+	worker->Queue();
+	
+    return worker->Deferred().Promise();
+}
+
+Napi::Value Group::GetVariable(const Napi::CallbackInfo &info) {
     Napi::Promise::Deferred deferred=Napi::Promise::Deferred::New(info.Env());
-    deferred.Reject(Napi::String::New(info.Env(),"Not implemented yet"));
-	// int nvars;
-	// NC_CALL(nc_inq_varids(this->id, &nvars, NULL));
-	// int *var_ids = new int[nvars];
-	// NC_CALL(nc_inq_varids(this->id, NULL, var_ids));
+	Napi::Env env = info.Env();
 
-	// Napi::Object vars = Napi::Object::New(info.Env());
+	if (info.Length() != static_cast<size_t>(1)) {
+	 	deferred.Reject(Napi::String::New(env, "Wrong number of arguments. Missed variable name"));
+	    return deferred.Promise();
+	}
+	
+	const std::string var_name=info[0].As<Napi::String>().ToString();
 
-	// char name[NC_MAX_NAME + 1];
-	// for (int i = 0; i < nvars; ++i) {
-	// 	Napi::Object var = Variable::Build(info.Env(), var_ids[i], this->id);
+	auto worker=new NCAsyncWorker<VariableInfo>(
+		env,
+		deferred,
+		[parent_id=this->id,var_name] (const NCAsyncWorker<VariableInfo>* worker) {
+			int nvars;
+			NC_CALL(nc_inq_varids(parent_id, &nvars, NULL));
+			int *var_ids = new int[nvars];
+			NC_CALL(nc_inq_varids(parent_id, NULL, var_ids));
+			VariableInfo varInfo;
+			char varName[NC_MAX_NAME + 1];
+			varInfo.parent_id = parent_id;
+			for(int i=0; i<nvars; i++){
+				varInfo.var_id = var_ids[i];
+				NC_CALL(nc_inq_var(varInfo.parent_id, varInfo.var_id, varName, &varInfo.type, &varInfo.ndims, NULL, NULL));
+				if (var_name == varName) {
+					varInfo.name = std::string(varName);
+					delete[] var_ids;
+					return varInfo;
+				}
+			}
+			delete[] var_ids;
+			throw std::runtime_error(string_format("NetCDF4: Variable %s not found",var_name.c_str()));
+		},
+		[] (Napi::Env env,VariableInfo result) {
+			Napi::Object varObj = Variable::Build(env, result.var_id,
+				result.parent_id, result.name, result.type, result.ndims);
+			return varObj;
+		}
+	);
+	worker->Queue();
 
-	// 	int retval = nc_inq_varname(this->id, var_ids[i], name);
-	// 	if (retval == NC_NOERR) {
-	// 		vars.Set(name, var);
-	// 	}
-	// }
-	// delete[] var_ids;
-	// return vars;
+
     return deferred.Promise();
 }
+
 
 Napi::Value Group::GetDimensions(const Napi::CallbackInfo &info) {
 	bool unlimited=false;

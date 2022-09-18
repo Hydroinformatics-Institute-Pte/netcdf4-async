@@ -188,6 +188,7 @@ From original documentation:
     * `setName(name)`: Rename group
     * `getPath()` : Resolve promise to full name (path in file)
     * `getVariables()` : Resolve to associative array of variables in group
+    * `getVariable(name)` : Resolve to existing variable
     * `addVariable(name,type,dimensions)`: Added variable to group. Resolves to instance of `Variable`.
         * Parameters:
             * `name`: Variable name
@@ -243,7 +244,7 @@ From original documentation:
     * `renameAttribute(oldName,newName)`: Rename attribute
     * `deleteAttribute(name)`: Delete attribute
     * `getSubrgroups(..)` : Resolve to associative array of subgroups of group
-    * `getSubgroups(name)` : Resolve to subgroup
+    * `getSubgroup(name)` : Resolve to subgroup
     * `addSubgroup(name)` : Resolve to new created subgroup
 
 ### **Variable**
@@ -277,14 +278,16 @@ From original documentation:
             "name of dimension":length or 'unlimited'
         }
         ```
-    * `getFill()`: Resolve to defaut fill value or undefined, if variable in no fill mode
+    * `getFillMode()`: Resolve to defaut fill value or undefined, if variable in no fill mode
     ```json
     {
-        "mode":"chunk_mode",
+        "mode":"fill mode",
         "value":"fill value"
     }
     ```
-    * `setFill(mode,value?)`: Set default fill value or switch variable to no fill mode if value is undefined/not provided
+    * `setFillMode(value,mode)`: Set default fill value or switch variable to no fill mode if value is undefined/not provided
+    * `setFill(value)` : Set default fill value
+    * `getFill()` : Resolved to default fill value
     * `getChunked()`: Resolve to current chunk information
     ```json
     {
@@ -384,6 +387,6 @@ From original documentation:
 
 ## Knowing flaws
 
-* Reading `variable.fillvalue` for string type variables causes segfault with netcdf4 version prior to 4.6.1 due to knowing issue [nc_inq_var_fill() doesn't work for NC_STRING if a fill value is set - segfault results](https://github.com/Unidata/netcdf-c/issues/732). So, ubuntu<=18.04 is affected. 
+* Reading `variable.getFill(..)` for string type variables causes segfault with netcdf4 version prior to 4.6.1 due to knowing issue [nc_inq_var_fill() doesn't work for NC_STRING if a fill value is set - segfault results](https://github.com/Unidata/netcdf-c/issues/732). So, ubuntu<=18.04 is affected. 
 
 

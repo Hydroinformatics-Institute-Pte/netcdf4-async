@@ -6,6 +6,8 @@
 #include <string>
 #include <memory>
 #include <stdexcept>
+#include <mutex>
+#include <shared_mutex>
 #include "utils.h"
 
 
@@ -19,6 +21,8 @@ namespace netcdf4async {
 /// @brief NetCDF file implementation
 class File : public Napi::ObjectWrap<File> {
   public:
+	/// @brief lock
+
 	/// @brief Initialize class as NodeJS object
 	/// @param env NodeJS env
 	static void Init(Napi::Env env);
@@ -119,6 +123,7 @@ class Group : public Napi::ObjectWrap<Group> {
 	Napi::Value GetSubgroup(const Napi::CallbackInfo &info);
 
 	Napi::Value GetVariables(const Napi::CallbackInfo &info);
+	Napi::Value GetVariable(const Napi::CallbackInfo &info);
 	Napi::Value AddVariable(const Napi::CallbackInfo &info);
 
 	Napi::Value GetDimensions(const Napi::CallbackInfo &info);
@@ -133,6 +138,61 @@ class Group : public Napi::ObjectWrap<Group> {
 	std::string name;
 };
 
+class Variable : public Napi::ObjectWrap<Variable> {
+  public:
+	static void Init(Napi::Env env);
+	Variable(const Napi::CallbackInfo &info);
+	static Napi::Object Build(Napi::Env env, int id, int parent_id, std::string name, nc_type type, int ndims);
+	void set_name(std::string new_name);
+	
+  private:
+
+	Napi::Value GetName(const Napi::CallbackInfo &info);
+	Napi::Value SetName(const Napi::CallbackInfo &info);
+	Napi::Value GetNameSync(const Napi::CallbackInfo &info);
+	Napi::Value GetTypeSync(const Napi::CallbackInfo &info);
+
+	Napi::Value GetDimensions(const Napi::CallbackInfo &info);
+
+	Napi::Value GetFill(const Napi::CallbackInfo &info);
+	Napi::Value GetFillMode(const Napi::CallbackInfo &info);
+	Napi::Value SetFill(const Napi::CallbackInfo &info);
+ 	Napi::Value _getFillInfo(Napi::Env env,bool return_mode);
+
+	Napi::Value GetChunked(const Napi::CallbackInfo &info);
+	Napi::Value SetChunked(const Napi::CallbackInfo &info);
+
+	Napi::Value GetDeflateInfo(const Napi::CallbackInfo &info);
+	Napi::Value SetDeflateInfo(const Napi::CallbackInfo &info);
+
+	Napi::Value GetEndianness(const Napi::CallbackInfo &info);
+	Napi::Value SetEndianness(const Napi::CallbackInfo &info);
+	Napi::Value GetChecksumMode(const Napi::CallbackInfo &info);
+	Napi::Value SetChecksumMode(const Napi::CallbackInfo &info);
+
+	Napi::Value GetAttributes(const Napi::CallbackInfo &info);
+	Napi::Value AddAttribute(const Napi::CallbackInfo &info);
+	Napi::Value SetAttribute(const Napi::CallbackInfo &info);
+	Napi::Value RenameAttribute(const Napi::CallbackInfo &info);
+	Napi::Value DeleteAttribute(const Napi::CallbackInfo &info);
+
+
+	Napi::Value Read(const Napi::CallbackInfo &info);
+	Napi::Value ReadSlice(const Napi::CallbackInfo &info);
+	Napi::Value ReadStridedSlice(const Napi::CallbackInfo &info);
+	Napi::Value Write(const Napi::CallbackInfo &info);
+	Napi::Value WriteSlice(const Napi::CallbackInfo &info);
+	Napi::Value WriteStridedSlice(const Napi::CallbackInfo &info);
+	Napi::Value Inspect(const Napi::CallbackInfo &info);
+	static Napi::FunctionReference constructor;
+
+	static const unsigned char type_sizes[];
+	int id;
+	int parent_id;
+	nc_type type;
+	int ndims;
+	std::string name;
+};
 
 } // namespace netcdf4async
 
