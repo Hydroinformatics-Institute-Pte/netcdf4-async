@@ -584,6 +584,6 @@ Napi::Value Group::Inspect(const Napi::CallbackInfo &info) {
 }
 
 void Group::set_name(std::string groupname){
-	this->name = name;
+	this->name = groupname;
 }
 } // namespace netcdf4js
