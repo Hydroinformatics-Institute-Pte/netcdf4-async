@@ -388,5 +388,5 @@ From original documentation:
 ## Knowing flaws
 
 * Reading `variable.getFill(..)` for string type variables causes segfault with netcdf4 version prior to 4.6.1 due to knowing issue [nc_inq_var_fill() doesn't work for NC_STRING if a fill value is set - segfault results](https://github.com/Unidata/netcdf-c/issues/732). So, ubuntu<=18.04 is affected. 
-* In case if you closing file and then reopening it before close is success you can either fail with "Segmentation fault" or your call will be rejected randomly with "NetCDF4: Bad file Id". Looks like problem inside netcdf library itself. 
+
 

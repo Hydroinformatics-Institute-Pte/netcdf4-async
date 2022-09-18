@@ -1,4 +1,6 @@
 #include <iostream>
+#include <mutex>
+#include <shared_mutex>
 #include <netcdf.h>
 #include <string>
 #include "netcdf4-async.h"
@@ -22,6 +24,8 @@ struct NCFile_result
 	int status;
 };
 
+std::shared_timed_mutex open_close;
+
 
 Napi::FunctionReference File::constructor;
 
@@ -31,6 +35,7 @@ Napi::FunctionReference File::constructor;
  */
 File::~File() {
 	if (!closed) {
+		std::unique_lock<std::shared_timed_mutex> lock(open_close);
 		nc_close(id);
 	}
 }
@@ -190,6 +195,7 @@ Napi::Value File::Open(const Napi::CallbackInfo& info) {
 		deferred,
 		[name,mode,create] (const NCAsyncWorker<NCFile_result>* worker) {
 			static NCFile_result result;
+			std::unique_lock<std::shared_timed_mutex> lock(open_close);
 			if (create) {
 				NC_CALL(nc_create(name.c_str(), mode, &result.id));
 			}
@@ -268,6 +274,7 @@ Napi::Value File::Sync(const Napi::CallbackInfo &info) {
 			deferred,
 			[id] (const NCAsyncWorker<NCFile_result>* worker) {
 				static NCFile_result result;
+				std::unique_lock<std::shared_timed_mutex> lock(open_close);
 				result.id=id;
 		        NC_CALL(nc_sync(id))
 				return result;
@@ -304,6 +311,7 @@ Napi::Value File::Close(const Napi::CallbackInfo &info) {
 			deferred,
 			[id] (const NCAsyncWorker<NCFile_result>* worker) {
 				static NCFile_result result;
+				std::unique_lock<std::shared_timed_mutex> lock(open_close);				
 				result.id=id;
 		        result.status=nc_close(id);
 				return result;

@@ -6,6 +6,8 @@
 #include <string>
 #include <memory>
 #include <stdexcept>
+#include <mutex>
+#include <shared_mutex>
 #include "utils.h"
 
 
@@ -19,6 +21,8 @@ namespace netcdf4async {
 /// @brief NetCDF file implementation
 class File : public Napi::ObjectWrap<File> {
   public:
+	/// @brief lock
+
 	/// @brief Initialize class as NodeJS object
 	/// @param env NodeJS env
 	static void Init(Napi::Env env);
