@@ -1,6 +1,6 @@
 # netcdf4-async
 
-![Build status](https://github.com//netcdf4-async/workflows/Node.js%20CI/badge.svg?branch=master)
+![Build status](https://github.com/Hydroinformatics-Institute-Pte/netcdf4-async/actions/workflows/nodejs.yml/badge.svg)
 [![NPM Version](https://img.shields.io/npm/v/netcdf4-async.svg)](https://npmjs.org/package/netcdf4-async)
 
 
