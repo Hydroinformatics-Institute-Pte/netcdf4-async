@@ -274,26 +274,6 @@ Napi::Value add_attribute(Napi::Env env, Napi::Promise::Deferred deferred, int p
 	return worker->Deferred().Promise();
 }
 
-
-Napi::Value delete_attribute(Napi::Env env, int parent_id, int var_id, const std::string name) {
-	auto worker = new NCAsyncWorker<std::string>(
-		env,
-		[parent_id, var_id, name] (const NCAsyncWorker<std::string>* worker) {
-			
-			NC_CALL(nc_del_att(parent_id, var_id, name.c_str()));
-			
-            return name;
-		},
-		[] (Napi::Env env, std::string result) {
-			return Napi::String::New(env, result);
-		}
-		
-	);
-	worker->Queue();
-	return worker->Deferred().Promise();
-}
-
-
 Napi::Value rename_attribute(Napi::Env env, Napi::Promise::Deferred deferred, int parent_id, int var_id, const std::string old_name, const std::string new_name) {
 
 	auto worker = new NCAsyncWorker<std::string>(
@@ -312,5 +292,24 @@ Napi::Value rename_attribute(Napi::Env env, Napi::Promise::Deferred deferred, in
 	worker->Queue();
 	return worker->Deferred().Promise();
 }
+
+Napi::Value delete_attribute(Napi::Env env, Napi::Promise::Deferred deferred,
+ int parent_id, int var_id, const std::string name) {
+	auto worker = new NCAsyncWorker<std::string>(
+		env,
+		[parent_id, var_id, name] (const NCAsyncWorker<std::string>* worker) {
+			
+			NC_CALL(nc_del_att(parent_id, var_id, name.c_str()));
+			
+            return name;
+		},
+		[] (Napi::Env env, std::string result) {
+			return Napi::String::New(env, result);
+		}
+		
+	);
+	worker->Queue();
+	return worker->Deferred().Promise();
+ }
 
 }
