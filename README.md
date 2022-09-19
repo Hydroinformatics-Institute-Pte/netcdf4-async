@@ -1,9 +1,13 @@
 # netcdf4-async
 
+![Build status](https://github.com//netcdf4-async/workflows/Node.js%20CI/badge.svg?branch=master)
+[![NPM Version](https://img.shields.io/npm/v/netcdf4-async.svg)](https://npmjs.org/package/netcdf4-async)
+
+
 NodeJS library provided async access to the 
 [Network Common Data Form (NetCDF)](https://www.unidata.ucar.edu/software/netcdf/) files.
 
-Build upon version >=4 of libnetcdf and nodejs >=10.x
+Build upon version >=4 of libnetcdf and nodejs >=10.x. Inspired by synchronus version [netcdf4](https://www.npmjs.com/package/netcdf4)
 
 ## Installation
 
@@ -11,7 +15,7 @@ Build upon version >=4 of libnetcdf and nodejs >=10.x
 
 You will need `libnetcdf` >= 4.x installed.
 
-#### **On Linux/Unix/OSX**
+#### **On Linux/Unix**
 
 * Make sure your system fulfills all the prerequisites of [node-gyp](https://github.com/nodejs/node-gyp#on-unix)
 
@@ -345,7 +349,6 @@ From original documentation:
     * `setAttribute(name,value)`: Set value of attribute
     * `renameAttribute(oldName,newName)`: Rename attribute
     * `deleteAttribute(name)`: Delete attribute
-
     
 * Data access methods    
     * `read(pos....)` : Reads and returns a single value at positions
@@ -380,13 +383,9 @@ From original documentation:
     at position 2 for 3 steps with stride 2 (i.e.
     every other value) along the first dimension and position 4 for 2 steps
     with stride 1 (i.e. with no dropping) along the second dimension.
-    
-
-
-
 
 ## Knowing flaws
 
-* Reading `variable.getFill(..)` for string type variables causes segfault with netcdf4 version prior to 4.6.1 due to knowing issue [nc_inq_var_fill() doesn't work for NC_STRING if a fill value is set - segfault results](https://github.com/Unidata/netcdf-c/issues/732). So, ubuntu<=18.04 is affected. 
+* Reading `variable.getFill(..)` or `variable.getFillMode(..)` for string type variables causes segfault with netcdf4 version prior to 4.6.1 due to knowing issue [nc_inq_var_fill() doesn't work for NC_STRING if a fill value is set - segfault results](https://github.com/Unidata/netcdf-c/issues/732). So, ubuntu<=18.04 is affected. 
 
 
