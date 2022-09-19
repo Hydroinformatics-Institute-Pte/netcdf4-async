@@ -661,7 +661,7 @@ Napi::Value Variable::GetAttributes(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
 	int id = this->id;
 	int parent_id = this->parent_id;
- 	return netcdf4async::get_attributes(env, parent_id, id, return_type).Promise();
+ 	return netcdf4async::get_attributes(env, parent_id, id, return_type);
 }
 
 Napi::Value Variable::AddAttribute(const Napi::CallbackInfo &info) {
@@ -695,7 +695,7 @@ Napi::Value Variable::RenameAttribute(const Napi::CallbackInfo &info) {
 	}
 	std::string old_attribute_name = info[0].As<Napi::String>().Utf8Value();
 	std::string new_attribute_name = info[0].As<Napi::String>().Utf8Value();
-    return rename_attribute(env, deferred, this->parent_id, this->id, old_attribute_name, new_attribute_name).Promise();
+    return rename_attribute(env, deferred, this->parent_id, this->id, old_attribute_name, new_attribute_name);
 }
 
 Napi::Value Variable::DeleteAttribute(const Napi::CallbackInfo &info) {
@@ -706,7 +706,7 @@ Napi::Value Variable::DeleteAttribute(const Napi::CallbackInfo &info) {
 		return deferred.Promise();
 	}
 	std::string attribute_name = info[0].As<Napi::String>().Utf8Value();
-    return delete_attribute(env, deferred, this->parent_id, this->id, attribute_name).Promise();
+    return delete_attribute(env, deferred, this->parent_id, this->id, attribute_name);
 }
 
 Napi::Value Variable::Write(const Napi::CallbackInfo &info) {

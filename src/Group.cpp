@@ -418,7 +418,7 @@ Napi::Value Group::GetAttributes(const Napi::CallbackInfo &info) {
 	}
 	Napi::Env env = info.Env();
 	int id = this->id;
- 	return netcdf4async::get_attributes(env, id, NC_GLOBAL, return_type).Promise();
+ 	return netcdf4async::get_attributes(env, id, NC_GLOBAL, return_type);
 }
 
 Napi::Value Group::GetSubgroups(const Napi::CallbackInfo &info) {
