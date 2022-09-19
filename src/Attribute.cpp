@@ -275,7 +275,7 @@ Napi::Value add_attribute(Napi::Env env, Napi::Promise::Deferred deferred, int p
 }
 
 
-Napi::Value delete_attribute(Napi::Env env, int parent_id, int var_id, std::string name) {
+Napi::Value delete_attribute(Napi::Env env, int parent_id, int var_id, const std::string name) {
 	auto worker = new NCAsyncWorker<std::string>(
 		env,
 		[parent_id, var_id, name] (const NCAsyncWorker<std::string>* worker) {
@@ -294,7 +294,7 @@ Napi::Value delete_attribute(Napi::Env env, int parent_id, int var_id, std::stri
 }
 
 
-Napi::Value rename_attribute(Napi::Env env, Napi::Promise::Deferred deferred, int parent_id, int var_id, std::string old_name, std::string new_name) {
+Napi::Value rename_attribute(Napi::Env env, Napi::Promise::Deferred deferred, int parent_id, int var_id, const std::string old_name, const std::string new_name) {
 
 	auto worker = new NCAsyncWorker<std::string>(
 		env,
