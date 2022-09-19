@@ -56,7 +56,6 @@
                             'ExceptionHandling': 1
                         },
                         "VCLinkerTool": {
-                            "ImageHasSafeExceptionHandlers": "false",
                             "AdditionalLibraryDirectories": "<(netcdf_dir)/lib"
                         }
                     }
