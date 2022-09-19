@@ -24,7 +24,7 @@ const newFile=async (name,mode='w',filetype=undefined)=>{
         }
         unlinkSync(f.name);          
       } catch (e) {
-        console.log(`Exception ${e.message} due file ${file.name} closing`);
+        console.log(`Exception ${e.message} due file ${f.name} closing`);
       }
     };
     files=[];
