@@ -1,22 +1,23 @@
 {
   "name": "netcdf4-async",
   "version": "0.1.0-0",
-  "description": "Async access to  NetCDF4 files",
-  "main": "./build/Release/netcdf4.node",
+  "description": "Async access to NetCDF4 files",
+  "main": "./build/Release/netcdf4-async.node",
   "scripts": {
     "install": "node-gyp rebuild",
+    "rebuild": "node-gyp rebuild",
     "build": "node-gyp build",
-    "clean": "rm -rf build node_modules",
+    "clean": "rm -rf build",
+    "clean-all": "rm -rf build node_modules",
     "pretest": "node-gyp build",
-    "test": "mocha"
+    "test": "mocha --exit --recursive=\"./test/*.spec.js\""
   },
   "contributors": [
     "Vasyl Moskalov <mvtm.dn@gmail.com>",
     "Kostiantyn Zemskyy <zyama.zemskyy@gmail.com>"
   ],
-  "repository": "Hydroinformatics-Institute-Pte/netcdf4-async",
   "engines": {
-    "node": ">=8"
+    "node": ">=10"
   },
   "license": "MIT",
   "dependencies": {
@@ -26,7 +27,19 @@
   "devDependencies": {
     "chai": "^4.2.0",
     "chai-almost": "^1.0.1",
+    "chai-as-promised": "^7.1.1",
     "mocha": "^7.1.2",
     "unique-filename": "^2.0.1"
-  }
+  },
+  "keywords": [
+    "netcdf",
+    "netCDF4",
+    "hdf5",
+    "netCDF4-node"
+  ],
+  "repository": "https://github.com/Hydroinformatics-Institute-Pte/netcdf4-async",
+  "bugs": {
+    "url": "https://github.com/Hydroinformatics-Institute-Pte/netcdf4-async/issues"
+  },
+  "homepage": "https://github.com/Hydroinformatics-Institute-Pte/netcdf4-async#readme"
 }
